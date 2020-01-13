@@ -222,7 +222,6 @@ void pico_bsd_set_posix_fd(int sd, int posix_fd)
 int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
 {
     struct pico_bsd_endpoint * ep = NULL;
-    (void)proto;
 
 #ifdef PICO_SUPPORT_IPV6
     VALIDATE_TWO(domain,AF_INET, AF_INET6);
@@ -241,10 +240,16 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
     if (SOCK_STREAM != PICO_PROTO_TCP) {
         if (type == SOCK_STREAM)
             type = PICO_PROTO_TCP;
-        else
-            type = PICO_PROTO_UDP;
+        if (type == SOCK_DGRAM) {
+            if ((proto == 0) || (proto == IPPROTO_UDP)) {
+                type = PICO_PROTO_UDP;
+            } else if (proto == IPPROTO_ICMP) {
+                type = PICO_PROTO_ICMP4;
+            } else {
+                return -EPROTONOSUPPORT;
+            }
+        }
     }
-
     pico_mutex_lock(picoLock);
     ep = pico_bsd_create_socket();
     VALIDATE_NULL(ep);
@@ -252,7 +257,7 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
 
     ep->proto = type;
 
-    ep->s = pico_socket_open(stack, domain, type,&pico_socket_event);
+    ep->s = pico_socket_open(stack, domain, type, &pico_socket_event);
     if (!ep->s)
     {
         PICO_FREE(ep);
