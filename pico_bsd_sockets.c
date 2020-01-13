@@ -167,12 +167,14 @@ void pico_bsd_init(struct pico_stack *stack,
     pico_signal_select = pico_signal_init();
     pico_signal_tick = pico_signal_init();
     picoLock = pico_mutex_init();
-		pico_event_cb = event_cb;
-		pico_event_cb_arg = event_cb_arg;
+    pico_event_cb = event_cb;
+    pico_event_cb_arg = event_cb_arg;
 }
 
 void pico_bsd_deinit(struct pico_stack *S)
 {
+    pico_mutex_lock(picoLock);
+    pico_stack_deinit(S);
     pico_mutex_deinit(picoLock);
 }
 

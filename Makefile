@@ -1,4 +1,4 @@
-CFLAGS:=-ggdb -I. -I/usr/include/picotcp -I/usr/local/include/picotcp -DUSENETLINK -fPIC
+CFLAGS:=-I. -I/usr/include/picotcp -I/usr/local/include/picotcp -DUSENETLINK -fPIC -g -ggdb3
 
 all: mytcp bestnetapitest vunetpicox.so
 
