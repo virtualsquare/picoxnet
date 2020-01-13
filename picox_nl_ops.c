@@ -514,5 +514,12 @@ static nlq_request_handlers_table picostack_handlers_table = {
 };
 
 struct nlq_msg *picox_netlink_process(struct nlmsghdr *msg, struct pico_stack *stack) {
+	printf("picox_netlink_process\n");
 	return nlq_process_rtrequest(msg, picostack_handlers_table, stack);
+}
+
+int picox_netlink_ioctl(struct pico_stack *stack, unsigned long request, void *arg) {
+	printf("picox_netlink_ioctl\n");
+
+	return nlq_server_ioctl(picostack_handlers_table, stack, request, arg);
 }

@@ -27,5 +27,6 @@
 struct pico_stack;
 
 struct nlq_msg *picox_netlink_process(struct nlmsghdr *msg, struct pico_stack *stack);
+int picox_netlink_ioctl(struct pico_stack *stackinfo, unsigned long request, void *arg);
 
 #endif

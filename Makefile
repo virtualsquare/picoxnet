@@ -1,12 +1,15 @@
-CFLAGS:=-I. -I/usr/include/picotcp -DUSENETLINK
+CFLAGS:=-I. -I/usr/include/picotcp -I/usr/local/include/picotcp -DUSENETLINK -fPIC
 
-all: mytcp bestnetapitest
+all: mytcp bestnetapitest vunetpicox.so
 
 mytcp: mytcp.o pico_bsd_sockets.o picox_bsd.o picox_netlink.o picox_nl_ops.o
 	gcc -o $@ $^ -pthread -lpicotcp -lvdeplug -lvpoll -lfduserdata -lnlq
 
 bestnetapitest: bestnetapitest.o pico_bsd_sockets.o picox_bsd.o picox_netlink.o picox_nl_ops.o
 	gcc -o $@ $^ -pthread -lpicotcp -lvdeplug -lvpoll -lfduserdata -lnlq
+
+vunetpicox.so: vunetpicox.o pico_bsd_sockets.o picox_bsd.o picox_netlink.o picox_nl_ops.o
+	gcc -o $@ $^ -shared -pthread -lpicotcp -lvdeplug -lvpoll -lfduserdata -lnlq
 
 build-dep: /usr/lib/x86_64-linux-gnu/libvpoll.so /usr/lib/libpicotcp.so /usr/lib/x86_64-linux-gnu/libnlq.so /usr/bin/umvu
 	

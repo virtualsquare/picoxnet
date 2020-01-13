@@ -32,12 +32,9 @@
 #include <fduserdata.h>
 #include <pico_bsd_sockets.h>
 
-//#include <picox_priv.h>
+#include <picox_bsd.h>
 #include <picox_netlink.h>
-
-#ifdef DUMMYVDEEIF
 #include <pico_dev_vde.h>
-#endif
 
 static FDUSERDATA *fd2picofd;
 
@@ -66,7 +63,7 @@ void event_cb(uint32_t events, int fd, void *arg) {
 	vpoll_ctl(fd, VPOLL_CTL_SETEVENTS, events);
 }
 
-struct picox *picox_newstack(void) {
+struct picox *picox_newstack(char *vdeurl) {
 	struct picox *stack = calloc(1, sizeof(struct picox));
 	if (stack == NULL)
 		return errno = ENOMEM, NULL;
@@ -88,6 +85,18 @@ struct picox *picox_newstack(void) {
 		printf("%p\n",pico_dev);
 
 		pico_ipv4_link_add(stack->pico_stack, pico_dev, my_ip, netmask);
+	}
+#else
+	if (vdeurl != NULL) {
+		struct pico_device *pico_dev;
+		long int mrandmac = random();
+		uint8_t macaddr[6] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00 };
+		macaddr[5] = mrandmac;
+		macaddr[4] = mrandmac >> 8;
+		macaddr[3] = mrandmac >> 16;
+		macaddr[2] = mrandmac >> 24;
+		macaddr[1] = mrandmac >> 32;
+		pico_dev = (struct pico_device *) pico_vde_create(stack->pico_stack, vdeurl, "vde0", macaddr);
 	}
 #endif
 	pthread_create(&stack->picotick, NULL, picotick_thread, stack->pico_stack);
@@ -189,6 +198,7 @@ int picox_close(int fd) {
 #define picoxnl_accept(...) (errno = EOPNOTSUPP, -1)
 #define picoxnl_listen(...) (errno = EOPNOTSUPP, -1)
 #define picoxnl_shutdown(...) (errno = EOPNOTSUPP, -1)
+#define pico_ioctl(...) (errno = EOPNOTSUPP, -1)
 
 #define _PICOX(syscall, fd, ...) do { \
 	struct fd_data *fdd = fduserdata_get(fd2picofd, fd); \
@@ -348,11 +358,9 @@ int picox_shutdown(int fd, int how) {
 	_PICOX(shutdown, fd, how);
 }
 
-#if 0
 int picox_ioctl(int fd, unsigned long cmd, void *argp) {
 	_PICOX(ioctl, fd, cmd, argp);
 }
-#endif
 
 int picox_fcntl(int fd, int cmd, long val) {
 	_PICOX(fcntl, fd, cmd, val);
