@@ -51,11 +51,16 @@ struct fd_data {
 	int fd;
 };
 
+
+static volatile int picotick_terminated = 0;
 static void *picotick_thread (void *arg) {
 	struct pico_stack *S = arg;
 	while(1) {
 		pico_bsd_stack_tick(S);
-		usleep(2000);
+		if ((usleep(2000) > 0) || picotick_terminated) {
+            fprintf(stderr, "picotick_thread: Goodbye!\n");
+            pthread_exit(NULL);
+        }
 	}
 }
 
@@ -124,8 +129,8 @@ struct picox *picox_newstack(char *vdeurl) {
 }
 
 int picox_delstack(struct picox *stack) {
+    picotick_terminated++;
 	pico_bsd_deinit(stack->pico_stack);
-	pthread_kill(stack->picotick, SIGTERM);
 	return 0;
 }
 
