@@ -55,8 +55,8 @@ int main(int argc, char **argv)
 	struct sockaddr_in	cliaddr, servaddr;
 	int rv;
 
-	struct picox *stack = picox_newstack(argv[1]);
 #if USENETLINK
+	struct picox *stack = picox_newstack(NULL);
 	uint8_t ipv4addr[] = {192,168,250,42};
   uint8_t ipv4gw[] = {192,168,250,1};
 	int ifindex;
@@ -69,6 +69,8 @@ int main(int argc, char **argv)
     perror("addr ipv4");
   if (picox_iproute_add(stack, AF_INET, NULL, 0, ipv4gw) < 0)
     perror("route ipv4");
+#else
+	struct picox *stack = picox_newstack(argv[1]);
 #endif
 	printf("start\n");
 

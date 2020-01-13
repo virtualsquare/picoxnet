@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 	uint8_t ipv6addr[16] = {0x20, 0x01, 0x07, 0x60, [15] = 0x02};
 	uint8_t ipv6gw[16] = {0x20, 0x01, 0x07, 0x60, [15] = 0x01};
 
-	struct picox *stack = picox_newstack(argv[1]);
+	struct picox *stack = picox_newstack(NULL);
 
 	int ifindex;
 	if ((ifindex = picox_iplink_add(stack, NULL, -1, "vde", "")) < 0)

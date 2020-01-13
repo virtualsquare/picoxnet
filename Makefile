@@ -1,4 +1,4 @@
-CFLAGS:=-I. -I/usr/include/picotcp -I/usr/local/include/picotcp -DUSENETLINK -fPIC
+CFLAGS:=-ggdb -I. -I/usr/include/picotcp -I/usr/local/include/picotcp -DUSENETLINK -fPIC
 
 all: mytcp bestnetapitest vunetpicox.so
 
@@ -14,7 +14,7 @@ vunetpicox.so: vunetpicox.o pico_bsd_sockets.o picox_bsd.o picox_netlink.o picox
 build-dep: /usr/lib/x86_64-linux-gnu/libvpoll.so /usr/lib/libpicotcp.so /usr/lib/x86_64-linux-gnu/libnlq.so /usr/bin/umvu
 	
 clean:
-	@rm -rf *.o mytcp bestnetapitest
+	@rm -rf *.o mytcp bestnetapitest vunetpicox.so
 
 .PHONY: clean
 	
