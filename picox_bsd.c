@@ -34,6 +34,7 @@
 
 #include <picox_bsd.h>
 #include <picox_netlink.h>
+#include <pico_dev_loop.h>
 #include <pico_dev_vde.h>
 
 static FDUSERDATA *fd2picofd;
@@ -63,12 +64,31 @@ void event_cb(uint32_t events, int fd, void *arg) {
 	vpoll_ctl(fd, VPOLL_CTL_SETEVENTS, events);
 }
 
+static void picox_create_localhost (struct pico_stack *stack) {
+	struct pico_device *dev;
+	struct pico_ip4 ipaddr, netmask;
+	struct pico_ip6 ipaddr6 = {{0}}, netmask6 = {{0}};
+	dev = pico_loop_create(stack);
+	if (!dev) {
+		perror("Creating loop");
+		return;
+	}
+	pico_string_to_ipv4("127.0.0.1", &ipaddr.addr);
+	pico_string_to_ipv4("255.0.0.0", &netmask.addr);
+	pico_ipv4_link_add(stack, dev, ipaddr, netmask);
+	//printf("Loopback created\n");
+	pico_string_to_ipv6("::1", ipaddr6.addr);
+	pico_string_to_ipv6("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", netmask6.addr);
+	pico_ipv6_link_add(dev, ipaddr6, netmask6);
+}
+
 struct picox *picox_newstack(char *vdeurl) {
 	struct picox *stack = calloc(1, sizeof(struct picox));
 	if (stack == NULL)
 		return errno = ENOMEM, NULL;
 	pico_stack_init(&stack->pico_stack);
 	pico_bsd_init(stack->pico_stack, event_cb, NULL);
+	picox_create_localhost(stack->pico_stack);
 #ifdef DUMMYVDEEIF
 	{
 		struct pico_device *pico_dev;
