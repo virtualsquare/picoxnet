@@ -74,6 +74,7 @@ struct pico_bsd_endpoint {
   void *   signal;          /* signals new events */
   uint32_t timeout;         /* this is used for timeout sockets */
   int      error;           /* used for SO_ERROR sockopt after connect() */
+  uint16_t revents_cb;      /* received events already known by the cb */
 };
 
 /* MACRO's */
@@ -1040,20 +1041,24 @@ static uint16_t pico_bsd_wait(struct pico_bsd_endpoint * ep, int read, int write
 
 
 static void pico_call_event_cb(struct pico_bsd_endpoint *ep) {
-	int pollrevents = 0;
-	if (ep->revents & (PICO_SOCK_EV_FIN | PICO_SOCK_EV_ERR))
-		pollrevents |= POLLERR;
-	if (ep->revents & PICO_SOCK_EV_CLOSE)
-		pollrevents |= POLLHUP; /* XXX: I am sure we mean POLLRDHUP ! see man 2 poll */
-	if (ep->revents & (PICO_SOCK_EV_RD | PICO_SOCK_EV_CONN)) {
-		pollrevents |= POLLIN;
-		pollrevents |= POLLRDNORM;
-	}
-	if (ep->revents & PICO_SOCK_EV_WR) {
+	uint16_t revents = ep->revents;
+	if (revents != ep->revents_cb) {
+		int pollrevents = 0;
+		ep->revents_cb = revents;
+		if (revents & (PICO_SOCK_EV_FIN | PICO_SOCK_EV_ERR))
+			pollrevents |= POLLERR;
+		if (revents & PICO_SOCK_EV_CLOSE)
+			pollrevents |= POLLHUP; /* XXX: I am sure we mean POLLRDHUP ! see man 2 poll */
+		if (revents & (PICO_SOCK_EV_RD | PICO_SOCK_EV_CONN)) {
+			pollrevents |= POLLIN;
+			pollrevents |= POLLRDNORM;
+		}
+		if (revents & PICO_SOCK_EV_WR) {
 			pollrevents |= POLLOUT;
 			pollrevents |= POLLWRNORM;
+		}
+		pico_event_cb(pollrevents, ep->posix_fd, pico_event_cb_arg);
 	}
-	pico_event_cb(pollrevents, ep->posix_fd, pico_event_cb_arg);
 }
 
 static void pico_event_clear(struct pico_bsd_endpoint *ep, uint16_t events)

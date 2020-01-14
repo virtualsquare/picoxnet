@@ -134,9 +134,6 @@ int picox_delstack(struct picox *stack) {
 	return 0;
 }
 
-static void picox_event_callback(uint16_t events, int posixfd, void *arg) {
-}
-
 static int picox_newsocket(struct pico_stack *stack, int picofd, struct picoxnl *picoxnl) {
 	int fd;
 	struct fd_data *fdd;
