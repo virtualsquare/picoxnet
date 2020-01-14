@@ -117,7 +117,7 @@ static void nl_dump1addr(struct nlq_msg *msg, struct pico_stack *stack, union pi
 			return;
 		}
 	}
-	pico_tree_foreach(scan_link, &stack->Tree_dev_ip6_link) {
+	pico_tree_foreach(scan_link, &stack->IPV6Links) {
 		l6 = scan_link->keyValue;
 		if (l6 == (struct pico_ipv6_link *) link) {
 			nl_dump1addr_v6(msg, l6);
@@ -138,7 +138,8 @@ static void nl_dump1route_v4(struct nlq_msg *msg, struct pico_ipv4_route *route)
 			.rtm_src_len = 0);
 	nlq_addattr(msg, RTA_DST, &route->dest, sizeof(struct pico_ip4));
 	nlq_addattr(msg, RTA_GATEWAY, &route->gateway, sizeof(struct pico_ip4));
-	nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
+    if (route->link && route->link->dev)
+        nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
 }
 
 static void nl_dump1route_v6(struct nlq_msg *msg, struct pico_ipv6_route *route) {
@@ -153,7 +154,8 @@ static void nl_dump1route_v6(struct nlq_msg *msg, struct pico_ipv6_route *route)
 			.rtm_src_len = 0);
 	nlq_addattr(msg, RTA_DST, &route->dest, sizeof(struct pico_ip6));
 	nlq_addattr(msg, RTA_GATEWAY, &route->gateway, sizeof(struct pico_ip6));
-	nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
+    if (route->link && route->link->dev)
+        nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
 }
 
 static void nl_dump1route(struct nlq_msg *msg, struct pico_stack *stack, union pico_route *route) {
@@ -318,7 +320,7 @@ static int nl_addrdel(void *item, struct nlmsghdr *msg, struct nlattr **attr, vo
 			return 0;
 		}
 	}
-	pico_tree_foreach(scan_link, &stack->Tree_dev_ip6_link) {
+	pico_tree_foreach(scan_link, &stack->IPV6Links) {
 		l6 = scan_link->keyValue;
 		if (l6 == (struct pico_ipv6_link *) link) {
 			pico_ipv6_link_del(stack, dev, l6->address);
@@ -467,7 +469,7 @@ static int nl_addrget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, s
 			nl_dump1addr_v4(newmsg, (struct pico_ipv4_link *) link);
 			nlq_complete_enqueue(newmsg, reply_msgq);
 		}
-		pico_tree_foreach(scan, &stack->Tree_dev_ip6_link) {
+		pico_tree_foreach(scan, &stack->IPV6Links) {
 			struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWADDR, NLM_F_MULTI, msg->nlmsg_seq, 0);
 			link = scan->keyValue;
 			nl_dump1addr_v6(newmsg, (struct pico_ipv6_link *) link);
@@ -490,13 +492,13 @@ static int nl_routeget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, 
 		pico_tree_foreach(scan, &stack->IPV6Routes) {
 			struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWROUTE, NLM_F_MULTI, msg->nlmsg_seq, 0);
 			route = scan->keyValue;
-			nl_dump1route_v4(newmsg, (struct pico_ipv4_route *) route);
+			nl_dump1route_v6(newmsg, (struct pico_ipv6_route *) route);
 			nlq_complete_enqueue(newmsg, reply_msgq);
 		}
 		pico_tree_foreach(scan, &stack->Routes) {
 			struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWROUTE, NLM_F_MULTI, msg->nlmsg_seq, 0);
 			route = scan->keyValue;
-			nl_dump1route_v6(newmsg, (struct pico_ipv6_route *) route);
+			nl_dump1route_v4(newmsg, (struct pico_ipv4_route *) route);
 			nlq_complete_enqueue(newmsg, reply_msgq);
 		}
 	} else {
