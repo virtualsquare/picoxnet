@@ -97,10 +97,20 @@ static void nl_dump1addr_v4(struct nlq_msg *msg, struct pico_ipv4_link *link)
 static void nl_dump1addr_v6(struct nlq_msg *msg, struct pico_ipv6_link *link)
 {
 	uint32_t prefix = nlq_mask2prefix(AF_INET6, &link->netmask);
+    unsigned char scope;
+    if (pico_ipv6_is_localhost(link->address.addr)) {
+        scope = RT_SCOPE_HOST;
+    } else if (pico_ipv6_is_linklocal(link->address.addr)) {
+        scope = RT_SCOPE_LINK;
+    } else if (pico_ipv6_is_sitelocal(link->address.addr)) {
+        scope = RT_SCOPE_SITE;
+    } else {
+        scope = RT_SCOPE_UNIVERSE;
+    }
 	nlq_addstruct(msg, ifaddrmsg,
 			.ifa_family = AF_INET6,
 			.ifa_prefixlen = prefix,
-			.ifa_scope=RT_SCOPE_UNIVERSE,
+			.ifa_scope=scope,
 			.ifa_index=link->dev->hash);
 	nlq_addattr(msg, IFA_LOCAL, &link->address, sizeof(struct pico_ip6));
 	nlq_addattr(msg, IFA_ADDRESS, &link->address, sizeof(struct pico_ip6));
