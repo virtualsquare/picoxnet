@@ -372,7 +372,6 @@ static void *nl_search_route(struct nlmsghdr *msg, struct nlattr **attr, void *a
 		pico_tree_foreach(scan, &stack->IPV6Routes) {
 			r6 = scan->keyValue;
 			if ((rtm->rtm_dst_len == nlq_mask2prefix(AF_INET6, r6->netmask.addr)) &&
-					rtm->rtm_src_len == sizeof(struct pico_ip6) &&
 					((attr[RTA_DST] == NULL && pico_ipv6_is_null_address(&r6->dest)) ||
 					 (attr[RTA_DST] != NULL && (!pico_ipv6_is_null_address(&r6->dest)) &&
 						memcmp(&r6->dest, attr[RTA_DST]+1, sizeof(struct pico_ip6))== 0)) &&
