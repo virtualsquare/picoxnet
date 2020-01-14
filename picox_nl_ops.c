@@ -356,13 +356,12 @@ static void *nl_search_route(struct nlmsghdr *msg, struct nlattr **attr, void *a
 	if (rtm->rtm_family == AF_INET) {
 		pico_tree_foreach(scan, &stack->Routes) {
 			r4 = scan->keyValue;
-			if (rtm->rtm_dst_len == sizeof(struct pico_ip4) &&
-					rtm->rtm_src_len == sizeof(struct pico_ip4) &&
+			if ((rtm->rtm_dst_len == nlq_mask2prefix(AF_INET, &r4->netmask.addr)) &&
 					((attr[RTA_DST] == NULL && (r4->dest.addr == 0)) ||
 					 (attr[RTA_DST] != NULL && (r4->dest.addr != 0) &&
 						memcmp(&r4->dest, attr[RTA_DST]+1, sizeof(struct pico_ip4))== 0)) &&
 					attr[RTA_GATEWAY] != NULL &&
-					memcmp(&r4->gateway, attr[RTA_GATEWAY]+1, sizeof(struct pico_ip6)) == 0 &&
+					memcmp(&r4->gateway, attr[RTA_GATEWAY]+1, sizeof(struct pico_ip4)) == 0 &&
 					(attr[RTA_OIF] == NULL ||
 					 r4->link->dev->hash == *((uint32_t *)(attr[RTA_OIF] + 1))) &&
 					1)
@@ -372,7 +371,7 @@ static void *nl_search_route(struct nlmsghdr *msg, struct nlattr **attr, void *a
 	if (rtm->rtm_family == AF_INET6) {
 		pico_tree_foreach(scan, &stack->IPV6Routes) {
 			r6 = scan->keyValue;
-			if (rtm->rtm_dst_len == sizeof(struct pico_ip6) &&
+			if ((rtm->rtm_dst_len == nlq_mask2prefix(AF_INET6, r6->netmask.addr)) &&
 					rtm->rtm_src_len == sizeof(struct pico_ip6) &&
 					((attr[RTA_DST] == NULL && pico_ipv6_is_null_address(&r6->dest)) ||
 					 (attr[RTA_DST] != NULL && (!pico_ipv6_is_null_address(&r6->dest)) &&
