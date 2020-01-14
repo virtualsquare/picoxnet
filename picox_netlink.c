@@ -103,7 +103,6 @@ ssize_t picoxnl_sendto(struct picoxnl *picoxnl, const void *buf, size_t len, int
 		msgq = picox_netlink_process(msg, picoxnl->stack);
 		while (msgq != NULL) {
 			struct nlq_msg *msg = nlq_dequeue(&msgq);
-			//msg->nlq_packet->nlmsg_pid = nl->pid;
 			nlq_enqueue(msg, &picoxnl->msgq);
 		}
 		msg = NLMSG_NEXT(msg, len);
@@ -138,6 +137,10 @@ int picoxnl_getsockname (struct picoxnl *picoxnl, struct sockaddr *addr, socklen
 	return 0;
 }
 
+int picoxnl_ioctl(struct picoxnl *picoxnl, long cmd, void *argp) {
+	return picox_netlink_ioctl(picoxnl->stack, cmd, argp);
+}
+
 int picoxnl_getpeername (struct picoxnl *picoxnl, struct sockaddr *addr, socklen_t *addrlen) {
 	errno = EOPNOTSUPP;
 	return -1;
@@ -159,11 +162,6 @@ int picoxnl_setsockopt (struct picoxnl *picoxnl, int level, int optname, const v
 }
 
 int picoxnl_connect(struct picoxnl *picoxnl, const struct sockaddr *addr, socklen_t addrlen) {
-	errno = EOPNOTSUPP;
-	return -1;
-}
-
-int picoxnl_ioctl(struct picoxnl *picoxnl, long cmd, void *argp) {
 	errno = EOPNOTSUPP;
 	return -1;
 }
