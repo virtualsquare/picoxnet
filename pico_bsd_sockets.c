@@ -429,6 +429,9 @@ int pico_connect(int sd, const struct sockaddr *_saddr, socklen_t socklen)
         return -1;
     }
 
+    if ((ep->s->proto != PICO_PROTO_TCP) && (ret == 0))
+        return 0;
+
     if (ep->nonblocking) {
         pico_err = PICO_ERR_EAGAIN;
         ep->error = pico_err;
