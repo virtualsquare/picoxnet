@@ -58,6 +58,7 @@ extern void   *pico_signal_tick;
     #include <fcntl.h>
     #include <sys/poll.h>
     #include <sys/time.h>
+    #include <sys/ioctl.h>
     #ifdef __linux__
         #include <linux/tcp.h>
     #endif
@@ -260,9 +261,12 @@ extern void   *pico_signal_tick;
     #define F_SETFL 4
 #endif
 
-
 #ifndef O_NONBLOCK
     #define O_NONBLOCK  0x4000
+#endif
+
+#ifndef FIONREAD
+    #define FIONREAD      0x541B
 #endif
 
 #ifndef _SYS_POLL_H
@@ -309,6 +313,8 @@ int pico_getsockname(int sd, struct sockaddr * local_addr, socklen_t *socklen);
 int pico_getpeername(int sd, struct sockaddr * remote_addr, socklen_t *socklen);
 int pico_fcntl(int sd, int cmd, int arg);
 int pico_join_multicast_group(int sd, const char *address, const char *local);
+int pico_ioctl(int fd, unsigned long cmd, void *argp);
+
 
 #ifdef PICO_SUPPORT_DNS_CLIENT
     struct hostent *pico_gethostbyname(const char *name);

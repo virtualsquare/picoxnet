@@ -40,7 +40,6 @@
 #include <time.h>
 #include <errno.h> /* should be there in C99 */
 
-
 #define BILLION 1000000000
 
 #define SOCK_OPEN                   0
@@ -1716,4 +1715,25 @@ int pico_poll(struct pollfd *pfd, nfds_t npfd, int timeout)
     } else {
         return pico_ppoll(pfd, npfd, NULL, NULL);
     }
+}
+
+int pico_ioctl(int sd, unsigned long cmd, void *argp)
+{
+	struct pico_bsd_endpoint *ep = get_endpoint(sd, 1);
+
+	if (ep == NULL)
+		return errno = EBADF, -1;
+	switch (cmd) {
+		case FIONREAD:
+			{
+				int *retval = argp;
+				if (retval == NULL)
+					return errno = EINVAL, -1;
+				*retval = pico_socket_fionread(ep->s);
+				//printf("FIONREAD %d\n", *retval);
+				return 0;
+			}
+		default:
+				return errno = EINVAL, -1;
+	}
 }
