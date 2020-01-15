@@ -257,7 +257,6 @@ static int nl_linkcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 static int nl_linkdel(void *item, struct nlmsghdr *msg, struct nlattr **attr, void *argenv) {
 	struct pico_device *link = item;
 	pico_ipv4_cleanup_links(link->stack, link);
-	pico_vde_destroy(link);
 	pico_device_destroy(link);
 	return 0;
 }
