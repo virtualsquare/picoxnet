@@ -301,7 +301,7 @@ static int nl_addrcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 		struct pico_ip4 address, netmask;
 		nlq_prefix2mask(AF_INET, &netmask, ifa->ifa_prefixlen);
 		memcpy(&address, attr[IFA_ADDRESS] + 1, sizeof(struct pico_ip4));
-        if (pico_ipv4_link_add(stack, dev, address, netmask))
+        if (pico_ipv4_link_add(stack, dev, address, netmask) == 0)
             return 0;
         else
             return (0 - pico_err);
@@ -310,7 +310,7 @@ static int nl_addrcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 		struct pico_ip6 address, netmask;
 		nlq_prefix2mask(AF_INET6, &netmask, ifa->ifa_prefixlen);
 		memcpy(&address, attr[IFA_ADDRESS] + 1, sizeof(struct pico_ip6));
-        if (pico_ipv6_link_add(dev, address, netmask))
+        if (pico_ipv6_link_add(dev, address, netmask) != NULL)
             return 0;
         else
             return (0 - pico_err);
