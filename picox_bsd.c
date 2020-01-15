@@ -216,17 +216,34 @@ int picox_close(int fd) {
 	return ret;
 }
 
+int pico_ioctl(int fd, unsigned long cmd, void *argp) {
+	//printf("pico_ioctl %d %d\n", fd, cmd);
+	errno = EOPNOTSUPP;
+	return -1;
+}
+
+int picox_ioctl(int fd, unsigned long cmd, void *argp) {
+	struct fd_data *fdd = fduserdata_get(fd2picofd, fd);
+  ssize_t ret = 0; \
+  if (fdd == NULL)
+		return errno = ENOENT, -1; // this should never happen
+  ret = picoxnl_ioctl(fdd->picoxnl, cmd, argp);
+	if (fdd->picoxnl == NULL && ret < 0 && errno == EOPNOTSUPP)
+		ret = pico_ioctl(fdd->picofd, cmd, argp);
+  fduserdata_put(fdd); \
+  return ret; \
+}
+
 /* not suppported by netlink design */
 #define picoxnl_accept(...) (errno = EOPNOTSUPP, -1)
 #define picoxnl_listen(...) (errno = EOPNOTSUPP, -1)
 #define picoxnl_shutdown(...) (errno = EOPNOTSUPP, -1)
-#define pico_ioctl(...) (errno = EOPNOTSUPP, -1)
 
 #define _PICOX(syscall, fd, ...) do { \
 	struct fd_data *fdd = fduserdata_get(fd2picofd, fd); \
+	ssize_t ret = 0; \
 	if (fdd == NULL) \
 	return errno = ENOENT, -1; \
-	ssize_t ret = 0; \
 	if (fdd->picoxnl == NULL) \
 	ret = pico_##syscall(fdd->picofd, __VA_ARGS__); \
 	else \
@@ -378,10 +395,6 @@ int picox_getsockopt(int fd, int level, int optname, void *optval, socklen_t *op
 
 int picox_shutdown(int fd, int how) {
 	_PICOX(shutdown, fd, how);
-}
-
-int picox_ioctl(int fd, unsigned long cmd, void *argp) {
-	_PICOX(ioctl, fd, cmd, argp);
 }
 
 int picox_fcntl(int fd, int cmd, long val) {

@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <vunet.h>
 #include <picox_bsd.h>
 
@@ -45,7 +46,11 @@ static int supported_ioctl (unsigned long request) {
 
 static int _picox_socket(int domain, int type, int protocol) {
   struct picox *stack = vunet_get_private_data();
-  return picox_msocket(stack, domain, type, protocol);
+	type &= ~SOCK_CLOEXEC;
+  int rv = picox_msocket(stack, domain, type & ~SOCK_NONBLOCK, protocol);
+	if (rv >= 0 && (type & SOCK_NONBLOCK) != 0)
+		picox_fcntl(rv, F_SETFL, O_NONBLOCK);
+	return rv;
 }
 
 static int vunetpicox_ioctl(int fd, unsigned long request, void *addr) {
@@ -68,7 +73,7 @@ static int vunetpicox_ioctl(int fd, unsigned long request, void *addr) {
       }
     }
   } else
-    return ioctl(fd, request, addr);
+    return picox_ioctl(fd, request, addr);
 }
 
 static int vunetpicox_accept4(int fd, struct sockaddr *addr, socklen_t *addrlen, int flags) {
