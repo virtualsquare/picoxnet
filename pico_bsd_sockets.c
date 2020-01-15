@@ -50,6 +50,7 @@
 #define SOCK_RESET_BY_PEER          5
 #define SOCK_CLOSED                 100
 
+//#define bsd_dbg(...)                do {fprintf(stderr, __VA_ARGS__ );} while(0)
 #define bsd_dbg(...)                do {} while(0)
 #define bsd_dbg_select(...)         do {} while(0)
 
@@ -914,11 +915,11 @@ static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t
 static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pico_address *addr, uint16_t net)
 {
     VALIDATE_TWO(socklen, SOCKSIZE, SOCKSIZE6);
-    if ((socklen == SOCKSIZE6) && (net == PICO_PROTO_IPV6)) {
+    if ((socklen >= SOCKSIZE6) && (net == PICO_PROTO_IPV6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         memcpy(&saddr->sin6_addr.s6_addr, &addr->ip6.addr, 16);
         saddr->sin6_family = AF_INET6;
-    } else if ((socklen == SOCKSIZE) && (net == PICO_PROTO_IPV4)) {
+    } else if ((socklen >= SOCKSIZE) && (net == PICO_PROTO_IPV4)) {
         struct sockaddr_in *saddr = (struct sockaddr_in *)_saddr;
         saddr->sin_addr.s_addr = addr->ip4.addr;
         saddr->sin_family = AF_INET;
