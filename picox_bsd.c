@@ -112,7 +112,7 @@ struct picox *picox_newstack(char *vdeurl) {
 		pico_ipv4_link_add(stack->pico_stack, pico_dev, my_ip, netmask);
 	}
 #else
-	if (vdeurl != NULL) {
+	if (vdeurl != NULL && strcmp(vdeurl, "none") != 0) {
 		struct pico_device *pico_dev;
 		long int mrandmac = random();
 		uint8_t macaddr[6] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00 };

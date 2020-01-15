@@ -216,7 +216,7 @@ static int nl_linkcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 	struct nlattr *ifla_info[__IFLA_INFO_MAX];
 	struct ifinfomsg *ifi = (struct ifinfomsg *)(msg + 1);
 	struct pico_device *dev;
-	char *vdeurl = NULL;
+	char *vdeurl = "";
 	long int mrandmac = random();
 	uint8_t macaddr[6] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	macaddr[5] = mrandmac;

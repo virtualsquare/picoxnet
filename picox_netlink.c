@@ -86,7 +86,7 @@ ssize_t picoxnl_recvfrom(struct picoxnl *picoxnl, void *buf, size_t len, int fla
 		if (nlq_length(picoxnl->msgq) == 0 && picoxnl->vpollfd)
 			vpoll_ctl(picoxnl->vpollfd,VPOLL_CTL_DELEVENTS,EPOLLIN);
 	}
-	if (fromlen && *fromlen >= sizeof(struct sockaddr_nl)) {
+	if (from != NULL && fromlen != NULL&& *fromlen >= sizeof(struct sockaddr_nl)) {
 		struct sockaddr_nl *rfrom = (struct sockaddr_nl *)from;
 		struct sockaddr_nl sockname = {.nl_family = AF_NETLINK, .nl_pid = picoxnl->pid};
 		*rfrom = sockname;
