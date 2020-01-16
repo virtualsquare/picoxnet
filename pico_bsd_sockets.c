@@ -898,7 +898,11 @@ static uint16_t bsd_to_pico_port(const struct sockaddr *_saddr, socklen_t sockle
 
 static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t port)
 {
-    if (socklen == SOCKSIZE6) {
+    if (socklen < SOCKSIZE) {
+        pico_err = PICO_ERR_EINVAL;
+        return -1;
+    }
+    if (socklen >= SOCKSIZE6) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         saddr->sin6_port = port;
         return 0;
@@ -914,11 +918,16 @@ static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t
 
 static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pico_address *addr, uint16_t net)
 {
+    if (socklen < SOCKSIZE) {
+        pico_err = PICO_ERR_EINVAL;
+        return -1;
+    }
     if ((socklen >= SOCKSIZE6) && (net == PICO_PROTO_IPV6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         memcpy(&saddr->sin6_addr.s6_addr, &addr->ip6.addr, 16);
         saddr->sin6_family = AF_INET6;
-    } else if ((socklen >= SOCKSIZE) && (net == PICO_PROTO_IPV4)) {
+    }
+    if ((net == PICO_PROTO_IPV4)) {
         struct sockaddr_in *saddr = (struct sockaddr_in *)_saddr;
         saddr->sin_addr.s_addr = addr->ip4.addr;
         saddr->sin_family = AF_INET;
