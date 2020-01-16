@@ -733,7 +733,7 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
 
         if (retval > 0) {
             if (ep->proto == PICO_PROTO_UDP) {
-                if (_addr && socklen > 0)
+                if (_addr && (socklen))
                 {
                     if (pico_addr_to_bsd(_addr, *socklen, &picoaddr, ep->s->net->proto_number) < 0) {
                         pico_err = PICO_ERR_EINVAL;
@@ -914,7 +914,6 @@ static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t
 
 static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pico_address *addr, uint16_t net)
 {
-    VALIDATE_TWO(socklen, SOCKSIZE, SOCKSIZE6);
     if ((socklen >= SOCKSIZE6) && (net == PICO_PROTO_IPV6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         memcpy(&saddr->sin6_addr.s6_addr, &addr->ip6.addr, 16);
