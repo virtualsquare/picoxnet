@@ -694,6 +694,8 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
         return -1;
     }
 
+    if (ep->proto == PICO_PROTO_UDP && len > UDPMAXSIZE)
+        len = UDPMAXSIZE;
     while (tot_len < len) {
         pico_mutex_lock(picoLock);
         retval = pico_socket_recvfrom(ep->s, buf + tot_len ,  len - tot_len, &picoaddr, &port);

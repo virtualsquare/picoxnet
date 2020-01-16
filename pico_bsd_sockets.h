@@ -45,6 +45,7 @@
 
 #define SOCKSIZE  16
 #define SOCKSIZE6 28
+#define UDPMAXSIZE 0xFFFF      // 65535
 
 struct pico_bsd_endpoint;
 extern void   *picoLock;
