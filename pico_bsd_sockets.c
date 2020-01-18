@@ -739,7 +739,7 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
         }
 
         if (retval > 0) {
-            if (ep->proto == PICO_PROTO_UDP) {
+            if (ep->proto != PICO_PROTO_TCP) {
                 if (_addr && (socklen))
                 {
                     if (pico_addr_to_bsd(_addr, *socklen, &picoaddr, ep->s->net->proto_number) < 0) {
@@ -748,9 +748,10 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
                         ep->error = pico_err;
                         return -1;
                     }
-                    pico_port_to_bsd(_addr, *socklen, port);
+                    if (ep->proto == PICO_PROTO_UDP)
+                        pico_port_to_bsd(_addr, *socklen, port);
                 }
-                /* If in a recvfrom call, for UDP we should return immediately after the first dgram */
+                /* If in a recvfrom call, for Datagram protocols we should return immediately after the first dgram */
                 ep->error = pico_err;
                 return retval + tot_len;
             } else {
