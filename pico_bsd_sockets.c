@@ -1437,11 +1437,44 @@ int pico_getsockopt(int sockfd, int level, int optname, void *optval, socklen_t 
         return 0;
     }
 
+    if (((level == SOL_IP) || (level == IPPROTO_IP)) && (optname == SO_BINDTODEVICE)) {
+        struct pico_device *dev;
+        pico_mutex_lock(ep->mutex_lock);
+        ret = pico_socket_getoption(ep->s, sockopt_get_name(optname), (void *)&dev);
+        pico_mutex_unlock(ep->mutex_lock);
+        if (dev) {
+            if (*optlen < strlen(dev->name + 1)) {
+                pico_err = PICO_ERR_EMSGSIZE;
+                errno = PICO_ERR_EMSGSIZE;
+                return -1;
+            }
+            *optlen = strlen(dev->name);
+            strcpy((char *)optval, dev->name);
+            return 0;
+        } else {
+            memset(optval, 0, *optlen);
+            *optlen = 0;
+            return 0;
+        }
+    }
     pico_mutex_lock(ep->mutex_lock);
     ret = pico_socket_getoption(ep->s, sockopt_get_name(optname), optval);
     pico_mutex_unlock(ep->mutex_lock);
     return ret;
+}
 
+static struct pico_device *ifreq_to_pico_dev(struct pico_stack *stack, struct ifreq *ifr)
+{
+	struct pico_device *dev;
+	struct pico_tree_node *index;
+    if (!ifr)
+        return NULL;
+	pico_tree_foreach(index, &stack->Device_tree){
+		dev = index->keyValue;
+        if ((ifr->ifr_ifindex == dev->hash) || (strcmp(ifr->ifr_name, dev->name) == 0))
+            return dev;
+	}
+	return NULL;
 }
 
 int pico_setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen)
@@ -1472,11 +1505,22 @@ int pico_setsockopt(int sockfd, int level, int optname, const void *optval, sock
     if (optname == SO_ERROR)
         return PICO_ERR_ENOPROTOOPT;
 
+    if (((level == SOL_IP) || (level == IPPROTO_IP)) && (optname == SO_BINDTODEVICE)) {
+        struct pico_device *dev;
+        /* Optval is the struct ifreq that contains the device description */
+        dev = ifreq_to_pico_dev(ep->s->stack, (struct ifreq *)optval);
+        if (dev) {
+            pico_mutex_lock(ep->mutex_lock);
+            ret = pico_socket_setoption(ep->s, sockopt_get_name(optname), (void *)dev);
+            pico_mutex_unlock(ep->mutex_lock);
+        }
+    }
     pico_mutex_lock(ep->mutex_lock);
     ret = pico_socket_setoption(ep->s, sockopt_get_name(optname), (void *)optval);
     pico_mutex_unlock(ep->mutex_lock);
     return ret;
 }
+
 #ifdef PICO_SUPPORT_SNTP_CLIENT
 int pico_gettimeofday(struct timeval *tv, struct timezone *tz)
 {

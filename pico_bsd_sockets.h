@@ -43,6 +43,13 @@
 #include "pico_dns_client.h"
 #include "pico_socket.h"
 
+#include <linux/if.h>
+#include <linux/if_link.h>
+#include <linux/if_addr.h>
+#include <linux/if_arp.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+
 #define SOCKSIZE  16
 #define SOCKSIZE6 28
 #define UDPMAXSIZE 0xFFFF      // 65535
@@ -79,7 +86,7 @@ extern void   *pico_signal_tick;
             case TCP_KEEPIDLE   : return PICO_SOCKET_OPT_KEEPIDLE;
             case TCP_KEEPINTVL   : return PICO_SOCKET_OPT_KEEPINTVL;
         }
-        return -1;
+        return posix_name;
     }
 
     #define pico_fd_set     fd_set
@@ -116,6 +123,10 @@ extern void   *pico_signal_tick;
     #define SO_ERROR            (4103)
     #define SO_REUSEADDR        (2)
     #define SO_BROADCAST        (0x0020)
+    #define SO_DONTROUTE        (PICO_SOCKET_OPT_IP_DONTROUTE)
+    #define SO_BINDTODEVICE     (PICO_SOCKET_OPT_IP_BINDTODEVICE)
+    #define SO_HDRINCL          (PICO_SOCKET_OPT_IP_HDRINCL)
+
 
     #define sockopt_get_name(x) ((x))
 
