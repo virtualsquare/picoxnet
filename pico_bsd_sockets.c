@@ -202,8 +202,8 @@ static int get_free_sd(struct pico_bsd_endpoint *ep);
 static int new_sd(struct pico_bsd_endpoint *ep);
 static void free_up_ep(struct pico_bsd_endpoint *ep);
 static struct pico_bsd_endpoint *get_endpoint(int sd, int set_err);
-static int bsd_to_pico_addr(union pico_address *addr, const struct sockaddr *_saddr, socklen_t socklen);
-static uint16_t bsd_to_pico_port(const struct sockaddr *_saddr, socklen_t socklen);
+static int bsd_to_pico_addr(struct pico_bsd_endpoint *ep, union pico_address *addr, const struct sockaddr *_saddr, socklen_t socklen);
+static uint16_t bsd_to_pico_port(struct pico_bsd_endpoint *ep, const struct sockaddr *_saddr, socklen_t socklen);
 static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pico_address *addr, uint16_t net);
 static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t port);
 
@@ -295,13 +295,13 @@ int pico_bind(int sd, struct sockaddr * local_addr, socklen_t socklen)
     VALIDATE_NULL(local_addr);
     VALIDATE_TWO(socklen, SOCKSIZE, SOCKSIZE6);
 
-    if (bsd_to_pico_addr(&addr, local_addr, socklen) < 0)
+    if (bsd_to_pico_addr(ep, &addr, local_addr, socklen) < 0)
     {
         ep->error = PICO_ERR_EINVAL;
         errno = pico_err;
         return -1;
     }
-    port = bsd_to_pico_port(local_addr, socklen);
+    port = bsd_to_pico_port(ep, local_addr, socklen);
 
     pico_mutex_lock(picoLock);
     if(pico_socket_bind(ep->s, &addr, &port) < 0)
@@ -420,13 +420,13 @@ int pico_connect(int sd, const struct sockaddr *_saddr, socklen_t socklen)
     VALIDATE_NULL(ep);
     ep->error = PICO_ERR_NOERR;
     VALIDATE_NULL(_saddr);
-    if (bsd_to_pico_addr(&addr, _saddr, socklen) < 0)
+    if (bsd_to_pico_addr(ep, &addr, _saddr, socklen) < 0)
     {
         ep->error = PICO_ERR_EINVAL;
         errno = pico_err;
         return -1;
     }
-    port = bsd_to_pico_port(_saddr, socklen);
+    port = bsd_to_pico_port(ep, _saddr, socklen);
     pico_mutex_lock(picoLock);
     ret = pico_socket_connect(ep->s, &addr, port);
     pico_mutex_unlock(picoLock);
@@ -574,13 +574,13 @@ int pico_sendto(int sd, void * buf, int len, int flags, struct sockaddr *_dst, s
         if (_dst == NULL) {
             retval = pico_socket_send(ep->s, ((uint8_t *)buf) + tot_len, len - tot_len);
         } else {
-            if (bsd_to_pico_addr(&picoaddr, _dst, socklen) < 0) {
+            if (bsd_to_pico_addr(ep, &picoaddr, _dst, socklen) < 0) {
                 ep->error = PICO_ERR_EINVAL;
                 errno = pico_err;
                 pico_mutex_unlock(picoLock);
                 return -1;
             }
-            port = bsd_to_pico_port(_dst, socklen);
+            port = bsd_to_pico_port(ep, _dst, socklen);
             retval = pico_socket_sendto(ep->s, ((uint8_t *)buf) + tot_len, len - tot_len, &picoaddr, port);
         }
         pico_event_clear(ep, PICO_SOCK_EV_WR);
@@ -877,30 +877,33 @@ int pico_join_multicast_group(int sd, const char *address, const char *local) {
 }
 
 /*** Helper functions ***/
-static int bsd_to_pico_addr(union pico_address *addr, const struct sockaddr *_saddr, socklen_t socklen)
+static int bsd_to_pico_addr(struct pico_bsd_endpoint *ep, union pico_address *addr, const struct sockaddr *_saddr, socklen_t socklen)
 {
     VALIDATE_TWO(socklen, SOCKSIZE, SOCKSIZE6);
-    if (socklen == SOCKSIZE6) {
+    if (IS_SOCK_IPV6(ep->s) && (socklen >= SOCKSIZE6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         memcpy(&addr->ip6.addr, &saddr->sin6_addr.s6_addr, 16);
         saddr->sin6_family = AF_INET6;
-    } else {
+    } else if (IS_SOCK_IPV4(ep->s) && (socklen >= SOCKSIZE)) {
         struct sockaddr_in *saddr = (struct sockaddr_in *)_saddr;
         addr->ip4.addr = saddr->sin_addr.s_addr;
         saddr->sin_family = AF_INET;
+    } else {
+        return -1;
     }
     return 0;
 }
 
-static uint16_t bsd_to_pico_port(const struct sockaddr *_saddr, socklen_t socklen)
+static uint16_t bsd_to_pico_port(struct pico_bsd_endpoint *ep, const struct sockaddr *_saddr, socklen_t socklen)
 {
-    VALIDATE_TWO(socklen, SOCKSIZE, SOCKSIZE6);
-    if (socklen == SOCKSIZE6) {
+    if (IS_SOCK_IPV6(ep->s) && (socklen >= SOCKSIZE6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         return saddr->sin6_port;
-    } else {
+    } else if (IS_SOCK_IPV4(ep->s) && (socklen >= SOCKSIZE)) {
         struct sockaddr_in *saddr = (struct sockaddr_in *)_saddr;
         return saddr->sin_port;
+    } else {
+        return 0;
     }
 }
 
