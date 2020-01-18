@@ -230,7 +230,6 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
 #else
     VALIDATE_ONE(domain, AF_INET);
 #endif
-    VALIDATE_TWO(type,SOCK_STREAM,SOCK_DGRAM);
 
     if (AF_INET6 != PICO_PROTO_IPV6) {
         if (domain == AF_INET6)
