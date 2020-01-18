@@ -560,6 +560,7 @@ int pico_sendto(int sd, void * buf, int len, int flags, struct sockaddr *_dst, s
 
     VALIDATE_NULL(ep);
     ep->error = PICO_ERR_NOERR;
+    //printf("Called sendto\n");
 
     if (!buf || (len <= 0)) {
         pico_err = PICO_ERR_EINVAL;
@@ -682,7 +683,7 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
     union pico_address picoaddr;
     uint16_t port;
     unsigned char *buf = (unsigned char *)_buf;
-    bsd_dbg("Recvfrom called \n");
+    //printf("Recvfrom called \n");
 
     VALIDATE_NULL(ep);
     ep->error = PICO_ERR_NOERR;
@@ -753,6 +754,8 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
                 }
                 /* If in a recvfrom call, for Datagram protocols we should return immediately after the first dgram */
                 ep->error = pico_err;
+                if (pico_socket_fionread(ep->s) <= 0)
+                    pico_event_clear(ep, PICO_SOCK_EV_RD);
                 return retval + tot_len;
             } else {
                 /* TCP: continue until recvfrom = 0, socket buffer empty */
