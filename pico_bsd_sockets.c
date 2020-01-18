@@ -1415,7 +1415,7 @@ int pico_getsockopt(int sockfd, int level, int optname, void *optval, socklen_t 
     int ret;
     bsd_dbg("called getsockopt\n");
     VALIDATE_NULL(ep);
-    if (level != SOL_SOCKET) {
+    if (level != SOL_SOCKET && (level != SOL_IP) && (level != IPPROTO_IP)) {
         pico_err = PICO_ERR_EPROTONOSUPPORT;
         errno = pico_err;
         return -1;
@@ -1453,7 +1453,7 @@ int pico_setsockopt(int sockfd, int level, int optname, const void *optval, sock
     VALIDATE_NULL(ep);
     ep->error = PICO_ERR_NOERR;
     bsd_dbg("called setsockopt\n");
-    if (level != SOL_SOCKET) {
+    if (level != SOL_SOCKET && (level != SOL_IP) && (level != IPPROTO_IP)) {
         pico_err = PICO_ERR_EPROTONOSUPPORT;
         errno = pico_err;
         return -1;
