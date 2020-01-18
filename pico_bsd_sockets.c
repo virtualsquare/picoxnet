@@ -239,10 +239,11 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
             domain = PICO_PROTO_IPV4;
     }
 
-    if (SOCK_STREAM != PICO_PROTO_TCP) {
-        if (type == SOCK_STREAM)
+    switch(type) {
+        case SOCK_STREAM:
             type = PICO_PROTO_TCP;
-        if (type == SOCK_DGRAM) {
+            break;
+        case SOCK_DGRAM:
             if ((proto == 0) || (proto == IPPROTO_UDP)) {
                 type = PICO_PROTO_UDP;
             } else if (proto == IPPROTO_ICMP) {
@@ -250,7 +251,12 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
             } else {
                 return -EPROTONOSUPPORT;
             }
-        }
+            break;
+        case SOCK_RAW:
+            type = PICO_PROTO_RAWSOCKET | proto;
+            break;
+        default:
+            return -EPROTONOSUPPORT;
     }
     pico_mutex_lock(picoLock);
     ep = pico_bsd_create_socket();
