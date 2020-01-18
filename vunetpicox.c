@@ -54,26 +54,34 @@ static int _picox_socket(int domain, int type, int protocol) {
 }
 
 static int vunetpicox_ioctl(int fd, unsigned long request, void *addr) {
-	if (fd == -1) {
-		if (addr == NULL) {
-			int retval = vunet_ioctl_parms(request);
-      if (retval == 0) {
-        errno = ENOSYS; return -1;
-      } else
-        return retval;
-    } else {
-      int tmpfd = _picox_socket(AF_NETLINK, SOCK_RAW|SOCK_CLOEXEC, 0);
-      int retval;
-      if (tmpfd < 0)
-        return -1;
-      else {
-        retval = picox_ioctl(tmpfd, request, addr);
-        picox_close(tmpfd);
-        return retval;
+	if (fd == -1 && addr == NULL) {
+		int retval = vunet_ioctl_parms(request);
+		if (retval == 0) {
+			errno = ENOSYS; return -1;
+		} else
+			return retval;
+	} else {
+		int tmpfd, retval;
+		switch (request) {
+			case FIONREAD:
+			case FIONBIO:
+				//printf("forward  ioctl\n");
+				if (fd == -1)
+					return errno = EINVAL, -1;
+				else
+					return picox_ioctl(fd, request, addr);
+			default:
+				//printf("fake netlink socket\n");
+				tmpfd = _picox_socket(AF_NETLINK, SOCK_RAW|SOCK_CLOEXEC, 0);
+				if (tmpfd < 0)
+					return -1;
+				else {
+					retval = picox_ioctl(tmpfd, request, addr);
+					picox_close(tmpfd);
+					return retval;
       }
     }
-  } else
-    return picox_ioctl(fd, request, addr);
+	}
 }
 
 static int vunetpicox_accept4(int fd, struct sockaddr *addr, socklen_t *addrlen, int flags) {
@@ -98,7 +106,6 @@ int vunetpicox_fini(void *private_data) {
 
 struct vunet_operations vunet_ops = {
   .socket = _picox_socket,
-#if 1
   .bind = picox_bind,
   .connect = picox_connect,
   .listen = picox_listen,
@@ -117,7 +124,7 @@ struct vunet_operations vunet_ops = {
 
   .supported_domain = supported_domain,
   .supported_ioctl = supported_ioctl,
-#endif
+
   .init = vunetpicox_init,
   .fini = vunetpicox_fini,
 };
