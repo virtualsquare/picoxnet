@@ -50,8 +50,10 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+
 #define SOCKSIZE  16
 #define SOCKSIZE6 28
+#define SOCKSIZE_LL sizeof(struct sockaddr_ll)
 #define UDPMAXSIZE 0xFFFF      // 65535
 
 struct pico_bsd_endpoint;

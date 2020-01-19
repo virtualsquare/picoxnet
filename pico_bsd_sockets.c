@@ -93,14 +93,6 @@ struct pico_bsd_endpoint {
         return -1; \
     }
 
-#define VALIDATE_TWO(param,value1,value2) \
-    if(param != value1 && param != value2) { \
-        pico_err = PICO_ERR_EINVAL; \
-        errno = pico_err; \
-        return -1; \
-    }
-
-
 /* Private function prototypes */
 static void pico_event_clear(struct pico_bsd_endpoint *ep, uint16_t events);
 static uint16_t pico_bsd_wait(struct pico_bsd_endpoint * ep, int read, int write, int close);
@@ -207,6 +199,7 @@ static int bsd_to_pico_addr(struct pico_bsd_endpoint *ep, union pico_address *ad
 static uint16_t bsd_to_pico_port(struct pico_bsd_endpoint *ep, const struct sockaddr *_saddr, socklen_t socklen);
 static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pico_address *addr, uint16_t net);
 static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t port);
+static struct pico_device *ifreq_to_pico_dev(struct pico_stack *stack, struct ifreq *ifr);
 
 /** Global Sockets descriptors array **/
 static struct pico_bsd_endpoint **PicoSockets       = NULL;
@@ -225,13 +218,6 @@ void pico_bsd_set_posix_fd(int sd, int posix_fd)
 int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
 {
     struct pico_bsd_endpoint * ep = NULL;
-
-#ifdef PICO_SUPPORT_IPV6
-    VALIDATE_TWO(domain,AF_INET, AF_INET6);
-#else
-    VALIDATE_ONE(domain, AF_INET);
-#endif
-
     if (domain == AF_INET6)
         domain = PICO_PROTO_IPV6;
     else if (domain == AF_PACKET)
@@ -300,7 +286,6 @@ int pico_bind(int sd, struct sockaddr * local_addr, socklen_t socklen)
     VALIDATE_NULL(ep);
     ep->error = PICO_ERR_NOERR;
     VALIDATE_NULL(local_addr);
-    VALIDATE_TWO(socklen, SOCKSIZE, SOCKSIZE6);
 
     if (bsd_to_pico_addr(ep, &addr, local_addr, socklen) < 0)
     {
@@ -889,7 +874,21 @@ int pico_join_multicast_group(int sd, const char *address, const char *local) {
 /*** Helper functions ***/
 static int bsd_to_pico_addr(struct pico_bsd_endpoint *ep, union pico_address *addr, const struct sockaddr *_saddr, socklen_t socklen)
 {
-    VALIDATE_TWO(socklen, SOCKSIZE, SOCKSIZE6);
+    if (IS_SOCK_PACKET(ep->s) && (socklen >= SOCKSIZE_LL)) {
+        struct sockaddr_ll *saddr = (struct sockaddr_ll *)_saddr;
+        struct ifreq ifr = { };
+        struct pico_device *dev;
+        ifr.ifr_ifindex = saddr->sll_ifindex;
+        dev = ifreq_to_pico_dev(ep->s->stack, &ifr);
+        if (!dev)
+            return -1;
+        addr->ll.dev = dev;
+        addr->ll.proto = saddr->sll_protocol;
+        addr->ll.hatype = saddr->sll_hatype;
+        addr->ll.pktype = saddr->sll_pkttype;
+        addr->ll.halen = saddr->sll_halen;
+        memcpy(addr->ll.hwaddr.addr, saddr->sll_addr, 6);
+    }
     if (IS_SOCK_IPV6(ep->s) && (socklen >= SOCKSIZE6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         memcpy(&addr->ip6.addr, &saddr->sin6_addr.s6_addr, 16);
@@ -942,6 +941,17 @@ static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pi
     if (socklen < SOCKSIZE) {
         pico_err = PICO_ERR_EINVAL;
         return -1;
+    }
+    if ((socklen >= SOCKSIZE_LL) && (net == PICO_AF_PACKET)) {
+        struct sockaddr_ll *saddr = (struct sockaddr_ll *)_saddr;
+        memset(saddr, 0, sizeof(struct sockaddr_ll));
+        memcpy(saddr->sll_addr, addr->ll.hwaddr.addr, 6);
+        saddr->sll_protocol = addr->ll.proto;
+        saddr->sll_hatype = addr->ll.proto;
+        saddr->sll_pkttype = addr->ll.proto;
+        saddr->sll_halen = addr->ll.proto;
+        saddr->sll_ifindex = addr->ll.dev->hash;
+        saddr->sll_family = AF_PACKET;
     }
     if ((socklen >= SOCKSIZE6) && (net == PICO_PROTO_IPV6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
