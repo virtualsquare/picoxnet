@@ -33,7 +33,7 @@ static int supported_domain (int domain) {
     case AF_INET:
     case AF_INET6:
     case AF_NETLINK:
-    //case AF_PACKET:
+    case AF_PACKET:
       return 1;
     default:
       return 0;
