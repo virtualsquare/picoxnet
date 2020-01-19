@@ -31,6 +31,7 @@
 #include "pico_defines.h"
 #include "pico_config.h"    /* for zalloc and free */
 #include "pico_bsd_sockets.h"
+#include "pico_socket_ll.h"
 #ifdef PICO_SUPPORT_SNTP_CLIENT
 #include "pico_sntp_client.h"
 #endif
@@ -231,31 +232,37 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
     VALIDATE_ONE(domain, AF_INET);
 #endif
 
-    if (AF_INET6 != PICO_PROTO_IPV6) {
-        if (domain == AF_INET6)
-            domain = PICO_PROTO_IPV6;
-        else
-            domain = PICO_PROTO_IPV4;
-    }
+    if (domain == AF_INET6)
+        domain = PICO_PROTO_IPV6;
+    else if (domain == AF_PACKET)
+        domain = PICO_AF_PACKET;
+    else if (domain == AF_INET)
+        domain = PICO_PROTO_IPV4;
+    else
+        return -EPROTONOSUPPORT;
 
-    switch(type) {
-        case SOCK_STREAM:
-            type = PICO_PROTO_TCP;
-            break;
-        case SOCK_DGRAM:
-            if ((proto == 0) || (proto == IPPROTO_UDP)) {
-                type = PICO_PROTO_UDP;
-            } else if (proto == IPPROTO_ICMP) {
-                type = PICO_PROTO_ICMP4;
-            } else {
+    if (domain == PICO_AF_PACKET)
+        type = proto;
+    else {
+        switch(type) {
+            case SOCK_STREAM:
+                type = PICO_PROTO_TCP;
+                break;
+            case SOCK_DGRAM:
+                if ((proto == 0) || (proto == IPPROTO_UDP)) {
+                    type = PICO_PROTO_UDP;
+                } else if (proto == IPPROTO_ICMP) {
+                    type = PICO_PROTO_ICMP4;
+                } else {
+                    return -EPROTONOSUPPORT;
+                }
+                break;
+            case SOCK_RAW:
+                type = PICO_PROTO_RAWSOCKET | proto;
+                break;
+            default:
                 return -EPROTONOSUPPORT;
-            }
-            break;
-        case SOCK_RAW:
-            type = PICO_PROTO_RAWSOCKET | proto;
-            break;
-        default:
-            return -EPROTONOSUPPORT;
+        }
     }
     pico_mutex_lock(picoLock);
     ep = pico_bsd_create_socket();
@@ -286,7 +293,7 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
 
 int pico_bind(int sd, struct sockaddr * local_addr, socklen_t socklen)
 {
-    union pico_address addr = { .ip4 = { 0 } };
+    union pico_address addr = { .ip6.addr = { 0 } };
     uint16_t port;
     struct pico_bsd_endpoint *ep = get_endpoint(sd, 1);
 
@@ -1148,13 +1155,11 @@ static void pico_socket_event(uint16_t ev, struct pico_socket *s)
         /* DO NOT set ep->s = NULL, we might still be transmitting stuff! */
         ep->state = SOCK_CLOSED;
     }
-
-		if (pico_event_cb != NULL)
-			pico_call_event_cb(ep);
     pico_signal_send(pico_signal_select); /* Signal this event globally (e.g. for select()) */
     pico_signal_send(ep->signal);    /* Signal the endpoint that was blocking on this event */
-
     pico_mutex_unlock(ep->mutex_lock);
+    if (pico_event_cb != NULL)
+        pico_call_event_cb(ep);
 }
 
 
