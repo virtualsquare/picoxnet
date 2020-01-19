@@ -1169,11 +1169,11 @@ static void pico_socket_event(uint16_t ev, struct pico_socket *s)
         /* DO NOT set ep->s = NULL, we might still be transmitting stuff! */
         ep->state = SOCK_CLOSED;
     }
+    if (pico_event_cb != NULL)
+        pico_call_event_cb(ep);
     pico_signal_send(pico_signal_select); /* Signal this event globally (e.g. for select()) */
     pico_signal_send(ep->signal);    /* Signal the endpoint that was blocking on this event */
     pico_mutex_unlock(ep->mutex_lock);
-    if (pico_event_cb != NULL)
-        pico_call_event_cb(ep);
 }
 
 
