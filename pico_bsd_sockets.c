@@ -218,6 +218,7 @@ void pico_bsd_set_posix_fd(int sd, int posix_fd)
 int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
 {
     struct pico_bsd_endpoint * ep = NULL;
+    uint16_t af_packet_socktype;
     if (domain == AF_INET6)
         domain = PICO_PROTO_IPV6;
     else if (domain == AF_PACKET)
@@ -227,9 +228,10 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
     else
         return -EPROTONOSUPPORT;
 
-    if (domain == PICO_AF_PACKET)
+    if (domain == PICO_AF_PACKET) {
+        af_packet_socktype = (uint16_t)type;
         type = proto;
-    else {
+    } else {
         switch(type) {
             case SOCK_STREAM:
                 type = PICO_PROTO_TCP;
@@ -266,6 +268,9 @@ int pico_newsocket(struct pico_stack *stack, int domain, int type, int proto)
     }
 
     ep->s->priv = ep; /* let priv point to the endpoint struct */
+
+    if ((domain == PICO_AF_PACKET) && (af_packet_socktype == SOCK_RAW))
+        pico_socket_set_raw(ep->s);
 
     /* open picotcp endpoint */
     ep->state = SOCK_OPEN;
@@ -888,8 +893,7 @@ static int bsd_to_pico_addr(struct pico_bsd_endpoint *ep, union pico_address *ad
         addr->ll.pktype = saddr->sll_pkttype;
         addr->ll.halen = saddr->sll_halen;
         memcpy(addr->ll.hwaddr.addr, saddr->sll_addr, 6);
-    }
-    if (IS_SOCK_IPV6(ep->s) && (socklen >= SOCKSIZE6)) {
+    } else if (IS_SOCK_IPV6(ep->s) && (socklen >= SOCKSIZE6)) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         memcpy(&addr->ip6.addr, &saddr->sin6_addr.s6_addr, 16);
         saddr->sin6_family = AF_INET6;
