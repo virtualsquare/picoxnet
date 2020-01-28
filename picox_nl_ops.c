@@ -92,21 +92,23 @@ static void nl_dump1addr_v4(struct nlq_msg *msg, struct pico_ipv4_link *link)
 			.ifa_index=link->dev->hash);
 	nlq_addattr(msg, IFA_LOCAL, &link->address.addr, sizeof(struct pico_ip4));
 	nlq_addattr(msg, IFA_ADDRESS, &link->address.addr, sizeof(struct pico_ip4));
+	if (link->dev != NULL)
+		nlq_addattr(msg, IFA_LABEL, link->dev->name, strlen(link->dev->name) + 1);
 }
 
 static void nl_dump1addr_v6(struct nlq_msg *msg, struct pico_ipv6_link *link)
 {
 	uint32_t prefix = nlq_mask2prefix(AF_INET6, &link->netmask);
-    unsigned char scope;
-    if (pico_ipv6_is_localhost(link->address.addr)) {
-        scope = RT_SCOPE_HOST;
-    } else if (pico_ipv6_is_linklocal(link->address.addr)) {
-        scope = RT_SCOPE_LINK;
-    } else if (pico_ipv6_is_sitelocal(link->address.addr)) {
-        scope = RT_SCOPE_SITE;
-    } else {
-        scope = RT_SCOPE_UNIVERSE;
-    }
+	unsigned char scope;
+	if (pico_ipv6_is_localhost(link->address.addr)) {
+		scope = RT_SCOPE_HOST;
+	} else if (pico_ipv6_is_linklocal(link->address.addr)) {
+		scope = RT_SCOPE_LINK;
+	} else if (pico_ipv6_is_sitelocal(link->address.addr)) {
+		scope = RT_SCOPE_SITE;
+	} else {
+		scope = RT_SCOPE_UNIVERSE;
+	}
 	nlq_addstruct(msg, ifaddrmsg,
 			.ifa_family = AF_INET6,
 			.ifa_prefixlen = prefix,
@@ -114,6 +116,8 @@ static void nl_dump1addr_v6(struct nlq_msg *msg, struct pico_ipv6_link *link)
 			.ifa_index=link->dev->hash);
 	nlq_addattr(msg, IFA_LOCAL, &link->address, sizeof(struct pico_ip6));
 	nlq_addattr(msg, IFA_ADDRESS, &link->address, sizeof(struct pico_ip6));
+	if (link->dev != NULL)
+		nlq_addattr(msg, IFA_LABEL, link->dev->name, strlen(link->dev->name) + 1);
 }
 
 static void nl_dump1addr(struct nlq_msg *msg, struct pico_stack *stack, union pico_link *link) {
@@ -148,8 +152,8 @@ static void nl_dump1route_v4(struct nlq_msg *msg, struct pico_ipv4_route *route)
 			.rtm_src_len = 0);
 	nlq_addattr(msg, RTA_DST, &route->dest, sizeof(struct pico_ip4));
 	nlq_addattr(msg, RTA_GATEWAY, &route->gateway, sizeof(struct pico_ip4));
-    if (route->link && route->link->dev)
-        nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
+	if (route->link && route->link->dev)
+		nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
 }
 
 static void nl_dump1route_v6(struct nlq_msg *msg, struct pico_ipv6_route *route) {
@@ -164,8 +168,8 @@ static void nl_dump1route_v6(struct nlq_msg *msg, struct pico_ipv6_route *route)
 			.rtm_src_len = 0);
 	nlq_addattr(msg, RTA_DST, &route->dest, sizeof(struct pico_ip6));
 	nlq_addattr(msg, RTA_GATEWAY, &route->gateway, sizeof(struct pico_ip6));
-    if (route->link && route->link->dev)
-        nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
+	if (route->link && route->link->dev)
+		nlq_addattr(msg, RTA_OIF, &route->link->dev->hash, sizeof(uint32_t));
 }
 
 static void nl_dump1route(struct nlq_msg *msg, struct pico_stack *stack, union pico_route *route) {
@@ -471,21 +475,27 @@ static int nl_linkget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, s
 }
 
 static int nl_addrget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, struct nlq_msg **reply_msgq, void *argenv) {
+	struct ifaddrmsg *ifa = (struct ifaddrmsg *)(msg + 1);
+
 	struct pico_stack *stack = argenv;
 	union  pico_link *link;
 	struct pico_tree_node *scan;
 	if (entry == NULL) { // DUMP
-		pico_tree_foreach(scan, &stack->Tree_dev_link) {
-			struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWADDR, NLM_F_MULTI, msg->nlmsg_seq, 0);
-			link = scan->keyValue;
-			nl_dump1addr_v4(newmsg, (struct pico_ipv4_link *) link);
-			nlq_complete_enqueue(newmsg, reply_msgq);
+		if (ifa->ifa_family == AF_UNSPEC || ifa->ifa_family == AF_INET) {
+			pico_tree_foreach(scan, &stack->Tree_dev_link) {
+				struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWADDR, NLM_F_MULTI, msg->nlmsg_seq, 0);
+				link = scan->keyValue;
+				nl_dump1addr_v4(newmsg, (struct pico_ipv4_link *) link);
+				nlq_complete_enqueue(newmsg, reply_msgq);
+			}
 		}
-		pico_tree_foreach(scan, &stack->IPV6Links) {
-			struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWADDR, NLM_F_MULTI, msg->nlmsg_seq, 0);
-			link = scan->keyValue;
-			nl_dump1addr_v6(newmsg, (struct pico_ipv6_link *) link);
-			nlq_complete_enqueue(newmsg, reply_msgq);
+		if (ifa->ifa_family == AF_UNSPEC || ifa->ifa_family == AF_INET6) {
+			pico_tree_foreach(scan, &stack->IPV6Links) {
+				struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWADDR, NLM_F_MULTI, msg->nlmsg_seq, 0);
+				link = scan->keyValue;
+				nl_dump1addr_v6(newmsg, (struct pico_ipv6_link *) link);
+				nlq_complete_enqueue(newmsg, reply_msgq);
+			}
 		}
 	} else {
 		struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWADDR, 0, msg->nlmsg_seq, 0);
