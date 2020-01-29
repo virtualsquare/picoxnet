@@ -480,12 +480,11 @@ static int nl_linkget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, s
 }
 
 static int nl_addrget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, struct nlq_msg **reply_msgq, void *argenv) {
-	struct ifaddrmsg *ifa = (struct ifaddrmsg *)(msg + 1);
-
 	struct pico_stack *stack = argenv;
 	union  pico_link *link;
 	struct pico_tree_node *scan;
 	if (entry == NULL) { // DUMP
+		struct ifaddrmsg *ifa = (struct ifaddrmsg *)(msg + 1);
 		if (ifa->ifa_family == AF_UNSPEC || ifa->ifa_family == AF_INET) {
 			pico_tree_foreach(scan, &stack->Tree_dev_link) {
 				struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWADDR, NLM_F_MULTI, msg->nlmsg_seq, 0);
@@ -516,17 +515,22 @@ static int nl_routeget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, 
 	union pico_route *route;
 	struct pico_tree_node *scan;
 	if (entry == NULL) { // DUMP
-		pico_tree_foreach(scan, &stack->IPV6Routes) {
-			struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWROUTE, NLM_F_MULTI, msg->nlmsg_seq, 0);
-			route = scan->keyValue;
-			nl_dump1route_v6(newmsg, (struct pico_ipv6_route *) route);
-			nlq_complete_enqueue(newmsg, reply_msgq);
+		struct ifaddrmsg *ifa = (struct ifaddrmsg *)(msg + 1);
+		if (ifa->ifa_family == AF_UNSPEC || ifa->ifa_family == AF_INET6) {
+			pico_tree_foreach(scan, &stack->IPV6Routes) {
+				struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWROUTE, NLM_F_MULTI, msg->nlmsg_seq, 0);
+				route = scan->keyValue;
+				nl_dump1route_v6(newmsg, (struct pico_ipv6_route *) route);
+				nlq_complete_enqueue(newmsg, reply_msgq);
+			}
 		}
-		pico_tree_foreach(scan, &stack->Routes) {
-			struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWROUTE, NLM_F_MULTI, msg->nlmsg_seq, 0);
-			route = scan->keyValue;
-			nl_dump1route_v4(newmsg, (struct pico_ipv4_route *) route);
-			nlq_complete_enqueue(newmsg, reply_msgq);
+		if (ifa->ifa_family == AF_UNSPEC || ifa->ifa_family == AF_INET) {
+			pico_tree_foreach(scan, &stack->Routes) {
+				struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWROUTE, NLM_F_MULTI, msg->nlmsg_seq, 0);
+				route = scan->keyValue;
+				nl_dump1route_v4(newmsg, (struct pico_ipv4_route *) route);
+				nlq_complete_enqueue(newmsg, reply_msgq);
+			}
 		}
 	} else {
 		struct nlq_msg *newmsg = nlq_createmsg(RTM_NEWROUTE, 0, msg->nlmsg_seq, 0);
