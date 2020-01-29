@@ -280,6 +280,9 @@ static void *nl_search_addr(struct nlmsghdr *msg, struct nlattr **attr, void *ar
 	struct pico_stack *stack = argenv;
 	struct ifaddrmsg *ifa = (struct ifaddrmsg *)(msg + 1);
 
+	if (attr[IFA_ADDRESS] == NULL)
+		return NULL;
+
 	if (ifa->ifa_family == AF_INET)
 		return pico_ipv4_link_get(stack, (struct pico_ip4 *) (attr[IFA_ADDRESS] + 1));
 	if (ifa->ifa_family == AF_INET6)
