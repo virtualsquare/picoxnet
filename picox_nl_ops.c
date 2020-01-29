@@ -330,18 +330,19 @@ static int nl_addrdel(void *item, struct nlmsghdr *msg, struct nlattr **attr, vo
 	struct pico_ipv4_link *l4;
 	struct pico_ipv6_link *l6;
 	struct pico_tree_node *scan_link;
+	struct pico_tree_node *_tmp = NULL;
 	dev = link->ipv4.dev; /* In the same position in both structs */
 
 	/* Try removing ipv4 link first */
 
-	pico_tree_foreach(scan_link, &stack->Tree_dev_link) {
+	pico_tree_foreach_safe(scan_link, &stack->Tree_dev_link, _tmp) {
 		l4 = scan_link->keyValue;
 		if (l4 == (struct pico_ipv4_link *) link) {
 			pico_ipv4_link_del(stack, dev, l4->address);
 			return 0;
 		}
 	}
-	pico_tree_foreach(scan_link, &stack->IPV6Links) {
+	pico_tree_foreach_safe(scan_link, &stack->IPV6Links, _tmp) {
 		l6 = scan_link->keyValue;
 		if (l6 == (struct pico_ipv6_link *) link) {
 			pico_ipv6_link_del(stack, dev, l6->address);
@@ -437,18 +438,19 @@ static int nl_routedel(void *item, struct nlmsghdr *msg, struct nlattr **attr, v
 	struct pico_ipv4_route *r4;
 	struct pico_ipv6_route *r6;
 	struct pico_tree_node *scan_route;
+	struct pico_tree_node *_tmp = NULL;
 	//dev = route->ipv4.dev; /* In the same position in both structs */
 
 	/* Try removing ipv4 route first */
 
-	pico_tree_foreach(scan_route, &stack->Routes) {
+	pico_tree_foreach_safe(scan_route, &stack->Routes, _tmp) {
 		r4 = scan_route->keyValue;
 		if (r4 == (struct pico_ipv4_route *) route) {
 			pico_ipv4_route_del(stack, r4->dest, r4->netmask, r4->metric);
 			return 0;
 		}
 	}
-	pico_tree_foreach(scan_route, &stack->IPV6Routes) {
+	pico_tree_foreach_safe(scan_route, &stack->IPV6Routes, _tmp) {
 		r6 = scan_route->keyValue;
 		if (r6 == (struct pico_ipv6_route *) route) {
 			pico_ipv6_route_del(stack, r6->dest, r6->netmask, r6->gateway, r6->metric, r6->link);
