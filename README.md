@@ -1,12 +1,15 @@
-# Pico-X BSD: picoTCP-ng integration for virtualsquare
+# Picoxnet: a stack for the Internet of Threads based on picoTCP-ng
 
 ### Building
 
-compile using
-
-`make`
+```
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
 
 ### License
 
 Pico-X BSD is released under the term of GNU GPL. See [COPYING](./COPYING) for more info.
-

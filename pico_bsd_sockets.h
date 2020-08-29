@@ -28,7 +28,6 @@
  *********************************************************************/
 #ifndef PICO_BSD_SOCKETS_H_
 #define PICO_BSD_SOCKETS_H_
-#define _GNU_SOURCE
 
 #include <stdint.h>
 #include <signal.h>

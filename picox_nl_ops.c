@@ -21,7 +21,6 @@
  *
  *
  *********************************************************************/
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -45,7 +44,6 @@
 #include <linux/if_arp.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <libvumod.h>
 #include <libnlq.h>
 #include <pico_stack.h>
 #include <pico_device.h>
@@ -60,9 +58,8 @@ union pico_route {
 };
 
 static void nl_dump1link(struct nlq_msg *msg, struct pico_device *link) {
-	uint32_t zero = 0;
 	unsigned int flags = IFF_UP;
-	uint8_t mac_zero[6] = {};
+	uint8_t mac_zero[6] = {0};
 	uint8_t mac_bcast[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 	if (link->link_state) {
@@ -321,6 +318,7 @@ static int nl_addrcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
         else
             return (0 - pico_err);
 	}
+	return -EAFNOSUPPORT;
 }
 
 static int nl_addrdel(void *item, struct nlmsghdr *msg, struct nlattr **attr, void *argenv) {
@@ -423,7 +421,7 @@ static int nl_routecreate(struct nlmsghdr *msg, struct nlattr **attr, void *arge
 			memset(&dst6, 0, sizeof(struct pico_ip6));
 		memcpy(&gw6, attr[RTA_GATEWAY]+1, sizeof(struct pico_ip6));
 		nlq_prefix2mask(AF_INET6, &mask6, rtm->rtm_dst_len);
-		pico_ipv6_route_add(stack, dst6, mask6, gw6, 1, NULL);
+		ret = pico_ipv6_route_add(stack, dst6, mask6, gw6, 1, NULL);
 		if (ret == 0)
 			return 0;
 		return (0 - pico_err);
@@ -542,8 +540,8 @@ static int nl_routeget(void *entry, struct nlmsghdr *msg, struct nlattr **attr, 
 
 static nlq_request_handlers_table picostack_handlers_table = {
 	[RTMF_LINK]={nl_search_link, nl_linkget, nl_linkcreate, nl_linkdel, nl_linkset},
-	[RTMF_ADDR]={nl_search_addr, nl_addrget, nl_addrcreate, nl_addrdel},
-	[RTMF_ROUTE]={nl_search_route, nl_routeget, nl_routecreate, nl_routedel}
+	[RTMF_ADDR]={nl_search_addr, nl_addrget, nl_addrcreate, nl_addrdel, NULL},
+	[RTMF_ROUTE]={nl_search_route, nl_routeget, nl_routecreate, nl_routedel, NULL}
 };
 
 struct nlq_msg *picox_netlink_process(struct nlmsghdr *msg, struct pico_stack *stack) {

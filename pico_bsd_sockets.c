@@ -27,7 +27,6 @@
  *
  *********************************************************************/
 
-#define _GNU_SOURCE
 #include "pico_defines.h"
 #include "pico_config.h"    /* for zalloc and free */
 #include "pico_bsd_sockets.h"
@@ -1095,7 +1094,7 @@ static void pico_call_event_cb(struct pico_bsd_endpoint *ep) {
 		if (revents & (PICO_SOCK_EV_FIN | PICO_SOCK_EV_ERR))
 			pollrevents |= POLLERR | POLLHUP;
 		if (revents & PICO_SOCK_EV_CLOSE)
-			pollrevents |= POLLRDHUP;
+			pollrevents |= (POLLIN | POLLRDHUP);
 		if (revents & (PICO_SOCK_EV_RD | PICO_SOCK_EV_CONN)) {
 			pollrevents |= POLLIN;
 			pollrevents |= POLLRDNORM;

@@ -32,7 +32,7 @@
 #include <fduserdata.h>
 #include <pico_bsd_sockets.h>
 
-#include <picox_bsd.h>
+#include <picoxnet.h>
 #include <picox_netlink.h>
 #include <pico_dev_loop.h>
 #include <pico_dev_vde.h>
@@ -58,7 +58,7 @@ static void *picotick_thread (void *arg) {
 	while(1) {
 		pico_bsd_stack_tick(S);
 		if ((usleep(2000) > 0) || picotick_terminated) {
-            fprintf(stderr, "picotick_thread: Goodbye!\n");
+            //fprintf(stderr, "picotick_thread: Goodbye!\n");
             pthread_exit(NULL);
         }
 	}
@@ -389,6 +389,7 @@ int picox_fcntl(int fd, int cmd, long val) {
 
 __attribute__((constructor))
 	static void __init__(void) {
+		srandom(time(NULL) + getpid());
 		fd2picofd = fduserdata_create(0);
 	}
 
