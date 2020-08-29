@@ -1,8 +1,8 @@
 all: 
 
 /usr/lib/x86_64-linux-gnu/libvpoll.so: /usr/lib/libfduserdata.so
-	git clone https://github.com/rd235/libvpoll-eventfd.git
-	cd libvpoll-eventfd && cmake -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && cd ..
+	git clone https://github.com/rd235/libfduserdata.git
+	cd libfduserdata && cmake -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && cd ..
 
 /usr/lib/x86_64-linux-gnu/libnlq.so:
 	git clone https://github.com/virtualsquare/libnlq.git
@@ -33,6 +33,6 @@ all:
 	cd libfduserdata && cmake -DCMAKE_INSTALL_PREFIX=/usr && make && sudo make install && cd ..
 
 /usr/lib/libpicotcp.so:
-	git clone https://gitlab.com/insane-adding-machines/picotcp.git
+	git clone https://gitub.com/virtualsquare/picotcp.git
 	cd picotcp && make gnulib && sudo make gnulib-install
 
