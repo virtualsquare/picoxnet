@@ -156,7 +156,7 @@ void pico_threads_schedule(void)
 /* Public API functions */
 /************************/
 void pico_bsd_init(struct pico_stack *stack,
-		void event_cb(uint32_t events, int posix_fd, void *arg), void *event_cb_arg)
+    void event_cb(uint32_t events, int posix_fd, void *arg), void *event_cb_arg)
 {
     pico_signal_select = pico_signal_init();
     pico_signal_tick = pico_signal_init();
@@ -207,9 +207,9 @@ static int                        PicoSocket_max    = 0;
 /*** Public socket functions ***/
 void pico_bsd_set_posix_fd(int sd, int posix_fd)
 {
-	struct pico_bsd_endpoint *ep = get_endpoint(sd, 0);
-	if (ep)
-		ep->posix_fd = posix_fd;
+  struct pico_bsd_endpoint *ep = get_endpoint(sd, 0);
+  if (ep)
+    ep->posix_fd = posix_fd;
 }
 
 
@@ -867,9 +867,12 @@ int pico_join_multicast_group(int sd, const char *address, const char *local) {
 
     int ret;
     struct pico_ip_mreq mreq={};
+    uint32_t ip4addr;
 
-    pico_string_to_ipv4(address, &mreq.mcast_group_addr.ip4.addr);
-    pico_string_to_ipv4(local, &mreq.mcast_link_addr.ip4.addr);
+    pico_string_to_ipv4(address, &ip4addr);
+    mreq.mcast_group_addr.ip4.addr = ip4addr;
+    pico_string_to_ipv4(local, &ip4addr);
+    mreq.mcast_link_addr.ip4.addr = ip4addr;
     ret = pico_setsockopt(sd, SOL_SOCKET, PICO_IP_ADD_MEMBERSHIP, &mreq, sizeof(struct pico_ip_mreq));
 
     return ret;
@@ -1087,32 +1090,32 @@ static uint16_t pico_bsd_wait(struct pico_bsd_endpoint * ep, int read, int write
 
 
 static void pico_call_event_cb(struct pico_bsd_endpoint *ep) {
-	uint16_t revents = ep->revents;
-	if (revents != ep->revents_cb) {
-		int pollrevents = 0;
-		ep->revents_cb = revents;
-		if (revents & (PICO_SOCK_EV_FIN | PICO_SOCK_EV_ERR))
-			pollrevents |= POLLERR | POLLHUP;
-		if (revents & PICO_SOCK_EV_CLOSE)
-			pollrevents |= (POLLIN | POLLRDHUP);
-		if (revents & (PICO_SOCK_EV_RD | PICO_SOCK_EV_CONN)) {
-			pollrevents |= POLLIN;
-			pollrevents |= POLLRDNORM;
-		}
-		if (revents & PICO_SOCK_EV_WR) {
-			pollrevents |= POLLOUT;
-			pollrevents |= POLLWRNORM;
-		}
-		pico_event_cb(pollrevents, ep->posix_fd, pico_event_cb_arg);
-	}
+  uint16_t revents = ep->revents;
+  if (revents != ep->revents_cb) {
+    int pollrevents = 0;
+    ep->revents_cb = revents;
+    if (revents & (PICO_SOCK_EV_FIN | PICO_SOCK_EV_ERR))
+      pollrevents |= POLLERR | POLLHUP;
+    if (revents & PICO_SOCK_EV_CLOSE)
+      pollrevents |= (POLLIN | POLLRDHUP);
+    if (revents & (PICO_SOCK_EV_RD | PICO_SOCK_EV_CONN)) {
+      pollrevents |= POLLIN;
+      pollrevents |= POLLRDNORM;
+    }
+    if (revents & PICO_SOCK_EV_WR) {
+      pollrevents |= POLLOUT;
+      pollrevents |= POLLWRNORM;
+    }
+    pico_event_cb(pollrevents, ep->posix_fd, pico_event_cb_arg);
+  }
 }
 
 static void pico_event_clear(struct pico_bsd_endpoint *ep, uint16_t events)
 {
     pico_mutex_lock(ep->mutex_lock);
     ep->revents &= ~events; /* clear those events */
-		if (pico_event_cb != NULL)
-			pico_call_event_cb(ep);
+    if (pico_event_cb != NULL)
+      pico_call_event_cb(ep);
     pico_mutex_unlock(ep->mutex_lock);
 }
 
@@ -1260,6 +1263,7 @@ static void dns_ip4_cb(char *ip, void *arg)
     struct dnsquery_cookie *ck = (struct dnsquery_cookie *)arg;
     struct addrinfo *new;
     if (ip) {
+        uint32_t ip4addr;
         new = PICO_ZALLOC(sizeof(struct addrinfo));
         if (!new) {
             ck->revents = DNSQUERY_FAIL;
@@ -1277,7 +1281,8 @@ static void dns_ip4_cb(char *ip, void *arg)
             return;
         }
         new->ai_addrlen = sizeof(struct sockaddr_in);
-        pico_string_to_ipv4(ip, &(((struct sockaddr_in*)new->ai_addr)->sin_addr.s_addr));
+        pico_string_to_ipv4(ip, &ip4addr);
+        ((struct sockaddr_in*)(new->ai_addr))->sin_addr.s_addr = ip4addr;
         ((struct sockaddr_in*)(new->ai_addr))->sin_family = AF_INET;
         new->ai_next = *ck->res;
         *ck->res = new;
@@ -1490,16 +1495,16 @@ int pico_getsockopt(int sockfd, int level, int optname, void *optval, socklen_t 
 
 static struct pico_device *ifreq_to_pico_dev(struct pico_stack *stack, struct ifreq *ifr)
 {
-	struct pico_device *dev;
-	struct pico_tree_node *index;
+    struct pico_device *dev;
+    struct pico_tree_node *index;
     if (!ifr)
         return NULL;
-	pico_tree_foreach(index, &stack->Device_tree){
-		dev = index->keyValue;
+    pico_tree_foreach(index, &stack->Device_tree) {
+        dev = index->keyValue;
         if ((ifr->ifr_ifindex == dev->hash) || (strcmp(ifr->ifr_name, dev->name) == 0))
             return dev;
-	}
-	return NULL;
+    }
+    return NULL;
 }
 
 int pico_setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen)
@@ -1804,21 +1809,21 @@ int pico_poll(struct pollfd *pfd, nfds_t npfd, int timeout)
 
 int pico_ioctl(int sd, unsigned long cmd, void *argp)
 {
-	struct pico_bsd_endpoint *ep = get_endpoint(sd, 1);
+  struct pico_bsd_endpoint *ep = get_endpoint(sd, 1);
 
-	if (ep == NULL)
-		return errno = EBADF, -1;
-	switch (cmd) {
-		case FIONREAD:
-			{
-				int *retval = argp;
-				if (retval == NULL)
-					return errno = EINVAL, -1;
-				*retval = pico_socket_fionread(ep->s);
-				//printf("FIONREAD %d\n", *retval);
-				return 0;
-			}
-		default:
-				return errno = EINVAL, -1;
-	}
+  if (ep == NULL)
+    return errno = EBADF, -1;
+  switch (cmd) {
+    case FIONREAD:
+      {
+        int *retval = argp;
+        if (retval == NULL)
+          return errno = EINVAL, -1;
+        *retval = pico_socket_fionread(ep->s);
+        //printf("FIONREAD %d\n", *retval);
+        return 0;
+      }
+    default:
+        return errno = EINVAL, -1;
+  }
 }

@@ -73,14 +73,16 @@ static void picox_create_localhost (struct pico_stack *stack) {
 	struct pico_device *dev;
 	struct pico_ip4 ipaddr, netmask;
 	struct pico_ip6 ipaddr6 = {{0}}, netmask6 = {{0}};
+	uint32_t int_ipaddr, int_netmask;
 	dev = pico_loop_create(stack);
 	if (!dev) {
 		perror("Creating loop");
 		return;
 	}
-	pico_string_to_ipv4("127.0.0.1", &ipaddr.addr);
-	pico_string_to_ipv4("255.0.0.0", &netmask.addr);
-	pico_ipv4_link_add(stack, dev, ipaddr, netmask);
+	pico_string_to_ipv4("127.0.0.1", &int_ipaddr);
+	ipaddr.addr = int_ipaddr;
+	pico_string_to_ipv4("255.0.0.0", &int_netmask);
+	netmask.addr = int_netmask;
 	//printf("Loopback created\n");
 	pico_string_to_ipv6("::1", ipaddr6.addr);
 	pico_string_to_ipv6("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", netmask6.addr);
@@ -95,16 +97,20 @@ struct picox *picox_newstack(char *vdeurl) {
 	pico_bsd_init(stack->pico_stack, event_cb, NULL);
 	picox_create_localhost(stack->pico_stack);
 #ifdef DUMMYVDEEIF
+	/*  code for debug only */
 	{
 		struct pico_device *pico_dev;
 		struct pico_ip4 my_ip, netmask;
+		uint32_t int_ipaddr, int_netmask;
 
 		unsigned char macaddr[6]={0x0, 0x0, 0x0, 0xa, 0xb, 0xc};
 		macaddr[4] ^= (uint8_t)(getpid() >> 8);
 		macaddr[5] ^= (uint8_t) (getpid() & 0xFF);
 
-		pico_string_to_ipv4("192.168.250.222", &my_ip.addr);
-		pico_string_to_ipv4("255.255.255.0", &netmask.addr);
+		pico_string_to_ipv4("192.168.250.222", &int_ipaddr);
+		my_ip.addr = int_ipaddr;
+		pico_string_to_ipv4("255.255.255.0", &int_netmask);
+		netmask.addr = int_netmask;
 
 		pico_dev = (struct pico_device *) pico_vde_create(stack->pico_stack, "vde://", "vd0", macaddr);
 		printf("%p\n",pico_dev);
