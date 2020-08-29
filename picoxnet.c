@@ -144,12 +144,14 @@ static int picox_newsocket(struct pico_stack *stack, int picofd, struct picoxnl 
 		goto vpoll_create_err;
 	fdd = fduserdata_new(fd2picofd, fd, struct fd_data);
 	if (fdd == NULL)
-		goto vpoll_create_err;
+		goto fduserdata_new_err;
 	fdd->stack = stack;
 	fdd->picofd = picofd;
 	fdd->picoxnl = picoxnl;
 	fduserdata_put(fdd);
 	return fd;
+fduserdata_new_err:
+	close(fd);
 vpoll_create_err:
 	return -1;
 }
