@@ -58,9 +58,9 @@ static void *picotick_thread (void *arg) {
 	while(1) {
 		pico_bsd_stack_tick(S);
 		if ((usleep(2000) > 0) || picotick_terminated) {
-            //fprintf(stderr, "picotick_thread: Goodbye!\n");
-            pthread_exit(NULL);
-        }
+			//fprintf(stderr, "picotick_thread: Goodbye!\n");
+			pthread_exit(NULL);
+		}
 	}
 }
 
@@ -135,7 +135,7 @@ struct picox *picox_newstack(char *vdeurl) {
 }
 
 int picox_delstack(struct picox *stack) {
-    picotick_terminated++;
+	picotick_terminated++;
 	pico_bsd_deinit(stack->pico_stack);
 	return 0;
 }
@@ -194,11 +194,14 @@ int picox_accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
 	struct pico_stack *stack = fdd->stack;
 	int newpicofd = 0;
 	int newfd = 0;
-	if (fdd->picoxnl == NULL)
-		newpicofd = pico_accept(fdd->picofd, addr, addrlen);
-	else
+	if (fdd->picoxnl == NULL) {
+		int picofd = fdd->picofd;
+		fduserdata_put(fdd);
+		newpicofd = pico_accept(picofd, addr, addrlen);
+	} else {
 		errno = EOPNOTSUPP, newpicofd = -1;
-	fduserdata_put(fdd);
+		fduserdata_put(fdd);
+	}
 	if (newpicofd >= 0) {
 		newfd = picox_newsocket(stack, newpicofd, NULL);
 		if (newfd < 0)
@@ -225,7 +228,7 @@ int picox_close(int fd) {
 }
 
 /* not suppported by netlink design */
-#define picoxnl_accept(...) (errno = EOPNOTSUPP, -1)
+//#define picoxnl_accept(...) (errno = EOPNOTSUPP, -1)
 #define picoxnl_listen(...) (errno = EOPNOTSUPP, -1)
 #define picoxnl_shutdown(...) (errno = EOPNOTSUPP, -1)
 
@@ -234,11 +237,14 @@ int picox_close(int fd) {
 	ssize_t ret = 0; \
 	if (fdd == NULL) \
 	return errno = ENOENT, -1; \
-	if (fdd->picoxnl == NULL) \
-	ret = pico_##syscall(fdd->picofd, __VA_ARGS__); \
-	else \
-	ret = picoxnl_ ## syscall(fdd->picoxnl, __VA_ARGS__); \
-	fduserdata_put(fdd); \
+	if (fdd->picoxnl == NULL) { \
+		int picofd = fdd->picofd; \
+		fduserdata_put(fdd); \
+		ret = pico_##syscall(picofd, __VA_ARGS__); \
+	} else { \
+		ret = picoxnl_ ## syscall(fdd->picoxnl, __VA_ARGS__); \
+		fduserdata_put(fdd); \
+	} \
 	return ret; \
 } while (0)
 
