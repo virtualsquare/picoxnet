@@ -37,6 +37,8 @@
 #include <pico_dev_loop.h>
 #include <pico_dev_vde.h>
 
+#include <sys/random.h>
+
 static FDUSERDATA *fd2picofd;
 
 struct picox {
@@ -399,6 +401,19 @@ int picox_ioctl(int fd, unsigned long cmd, void *argp) {
 
 int picox_fcntl(int fd, int cmd, long val) {
 	_PICOX(fcntl, fd, cmd, val);
+}
+
+/* Override default pico_rand() functions */
+void pico_rand_feed(uint32_t feed)
+{
+}
+
+uint32_t pico_rand(void)
+{
+    uint32_t rnd;
+    int ret;
+    ret = getrandom(&rnd, sizeof(rnd), 0);
+    return rnd;
 }
 
 __attribute__((constructor))
