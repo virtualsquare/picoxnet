@@ -130,6 +130,11 @@ struct picox *picox_newstack(char *vdeurl) {
 		macaddr[2] = mrandmac >> 24;
 		macaddr[1] = mrandmac >> 32;
 		pico_dev = (struct pico_device *) pico_vde_create(stack->pico_stack, vdeurl, "vde0", macaddr);
+		if(!pico_dev) {
+			pico_bsd_deinit(stack->pico_stack);
+			free(stack);
+			return errno = EINVAL, NULL;
+		}
 	}
 #endif
 	pthread_create(&stack->picotick, NULL, picotick_thread, stack->pico_stack);
