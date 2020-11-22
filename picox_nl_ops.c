@@ -242,7 +242,7 @@ static int nl_linkcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 	} else {
 		static unsigned char counter = 0;
 		char name[8];
-		snprintf(name, 8, "vde%d\n", counter++);
+		snprintf(name, 8, "vde%d", counter++);
 		dev = pico_vde_create(stack, vdeurl, name, macaddr);
 	}
 
