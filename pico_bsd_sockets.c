@@ -113,9 +113,9 @@ void pico_signal_deinit(void * signal)
     sem_destroy((sem_t *) signal);
 }
 
-void pico_signal_wait(void * signal)
+int pico_signal_wait(void * signal)
 {
-    sem_wait((sem_t *) signal);
+    return sem_wait((sem_t *) signal);
 }
 
 int pico_signal_wait_timeout(void * signal, int timeout)
@@ -440,6 +440,11 @@ int pico_connect(int sd, const struct sockaddr *_saddr, socklen_t socklen)
     } else {
         /* wait for event */
         ev = pico_bsd_wait(ep, 0, 0, 0); /* wait for ERR, FIN and CONN */
+
+        /* In case a SIGINT happened while waiting*/
+        if(ev == 0 && errno == EINTR) {
+            return -1;
+        }
     }
 
     if(ev & PICO_SOCK_EV_CONN)
@@ -488,10 +493,17 @@ int pico_accept(int sd, struct sockaddr *_orig, socklen_t *socklen)
     ep->error = PICO_ERR_NOERR;
     VALIDATE_ONE(ep->state, SOCK_LISTEN);
 
-    if (ep->nonblocking)
+    if (ep->nonblocking) {
         events = PICO_SOCK_EV_CONN;
-    else
+    }
+    else {
         events = pico_bsd_wait(ep, 0, 0, 0); /* Wait for CONN, FIN and ERR */
+
+        /* In case a SIGINT happened while waiting*/
+        if(events == 0 && errno == EINTR) {
+            return -1;
+        }
+    }
 
     if(events & PICO_SOCK_EV_CONN)
     {
@@ -607,6 +619,19 @@ int pico_sendto(int sd, void * buf, int len, int flags, struct sockaddr *_dst, s
             uint16_t ev = 0;
             /* wait for a new WR or CLOSE event */
             ev = pico_bsd_wait(ep, 0, 1, 1);
+
+            /* In case a SIGINT happened while waiting*/
+            if(ev == 0 && errno == EINTR) {
+                tot_len += retval;
+                /* Only return -1 if no bytes were transmitted */
+                if(tot_len == 0) {
+                    return -1;
+                }
+                else {
+                    errno = 0;
+                    break;
+                }
+            }
 
             if (ev & (PICO_SOCK_EV_ERR | PICO_SOCK_EV_FIN | PICO_SOCK_EV_CLOSE))
             {
@@ -783,6 +808,20 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
             uint16_t ev = 0;
             /* wait for a new RD event -- also wait for CLOSE event */
             ev = pico_bsd_wait(ep, 1, 0, 1);
+
+            /* In case a SIGINT happened while waiting*/
+            if(ev == 0 && errno == EINTR) {
+                tot_len += retval;
+                /* Only return -1 if no bytes were received */
+                if(tot_len == 0) {
+                    return -1;
+                }
+                else {
+                    errno = 0;
+                    break;
+                }
+            }
+
             if (ev & (PICO_SOCK_EV_ERR | PICO_SOCK_EV_FIN | PICO_SOCK_EV_CLOSE))
             {
                 /* closing and freeing the socket is done in the event handler */
@@ -1058,7 +1097,10 @@ uint16_t pico_bsd_select(struct pico_bsd_endpoint *ep)
     /* wait for one of the selected events... */
     while (!events)
     {
-        pico_signal_wait(ep->signal);
+        if(pico_signal_wait(ep->signal) == -1 && errno == EINTR) {
+            return 0;
+        }
+
         events = (ep->revents & ep->events); /* filter for the events we were waiting for */
     }
     /* the event we were waiting for happened, now report it */

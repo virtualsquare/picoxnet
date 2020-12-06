@@ -381,7 +381,7 @@ void pico_mutex_unlock_ISR(void * mutex);
 
 void * pico_signal_init(void);
 void pico_signal_deinit(void * signal);
-void pico_signal_wait(void * signal);
+int pico_signal_wait(void * signal);
 int  pico_signal_wait_timeout(void * signal, int timeout);
 void pico_signal_send(void * signal);
 void pico_signal_send_ISR(void * signal);
