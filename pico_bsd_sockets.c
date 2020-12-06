@@ -531,6 +531,7 @@ int pico_accept(int sd, struct sockaddr *_orig, socklen_t *socklen)
         client_ep->state = SOCK_OPEN;
         client_ep->mutex_lock = pico_mutex_init();
         client_ep->signal = pico_signal_init();
+        client_ep->proto = ep->proto;
 
         client_ep->s->priv = client_ep;
         pico_event_clear(ep, PICO_SOCK_EV_CONN); /* clear the CONN event the listening socket */
