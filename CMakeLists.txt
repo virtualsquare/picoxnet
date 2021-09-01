@@ -39,7 +39,7 @@ include_directories(${PICOTCP_INCLUDEDIR})
 # include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(picoxnet SHARED picoxnet.c pico_bsd_sockets.c picox_netlink.c picox_nl_ops.c)
-target_link_libraries(picoxnet -lpthread -lpicotcp -lvdeplug -lvpoll -lfduserdata -lnlq)
+target_link_libraries(picoxnet pthread picotcp vdeplug vpoll fduserdata nlq)
 
 set_target_properties(picoxnet PROPERTIES VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR})
