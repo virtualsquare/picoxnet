@@ -233,9 +233,12 @@ static int nl_linkcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 		return -EINVAL;
 	if (strcmp((char*)(ifla_info[IFLA_INFO_KIND]+1), "vde") != 0)
 		return -EINVAL;
+	if (ifla_info[IFLA_INFO_SLAVE_KIND] != NULL)
+		vdeurl = (char *) (ifla_info[IFLA_INFO_SLAVE_KIND] + 1);
+	/* backwards compat: old deprecated override usage of IFLA_INFO_DATA:
+	 * (IFLA_INFO_DATA needs suboptions, not a string) */
 	if (ifla_info[IFLA_INFO_DATA] != NULL)
 		vdeurl = (char *) (ifla_info[IFLA_INFO_DATA] + 1);
-
 	if (attr[IFLA_IFNAME] != NULL) {
 		char *name = (char *) (attr[IFLA_IFNAME]+1);
 		dev = pico_vde_create(stack, vdeurl, name, macaddr);
