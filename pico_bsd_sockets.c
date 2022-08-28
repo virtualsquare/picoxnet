@@ -8,7 +8,7 @@
  * Copyright (c) 2013 Altran Intelligent Systems
  * Authors: Maxime Vincent, Daniele Lacamera
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
  *
  * Pico-X BSD is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

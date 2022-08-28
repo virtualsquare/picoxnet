@@ -3,7 +3,7 @@
  * Copyright (C) 2020  Renzo Davoli <renzo@cs.unibo.it>, Daniele Lacamera <root@danielinux.net>
  * VirtualSquare team.
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
  *
  * Pico-X BSD is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
