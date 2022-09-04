@@ -482,7 +482,7 @@ int pico_isconnected(int sd) {
 
 int pico_accept(int sd, struct sockaddr *_orig, socklen_t *socklen)
 {
-    struct pico_bsd_endpoint *ep, * client_ep = NULL;
+    struct pico_bsd_endpoint *ep;
     uint16_t events;
     union pico_address picoaddr;
     uint16_t port;
@@ -508,6 +508,7 @@ int pico_accept(int sd, struct sockaddr *_orig, socklen_t *socklen)
     if(events & PICO_SOCK_EV_CONN)
     {
         struct pico_socket *s;
+        struct pico_bsd_endpoint *client_ep = NULL;
         pico_mutex_lock(picoLock);
         s = pico_socket_accept(ep->s,&picoaddr,&port);
         if (!s)
@@ -553,7 +554,6 @@ int pico_accept(int sd, struct sockaddr *_orig, socklen_t *socklen)
         ep->error = pico_err;
         return client_ep->socket_fd;
     }
-    client_ep->in_use = 0;
     ep->error = pico_err;
     errno = pico_err;
     return -1;
