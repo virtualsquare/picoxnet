@@ -200,6 +200,8 @@ static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pi
 static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t port);
 static struct pico_device *ifreq_to_pico_dev(struct pico_stack *stack, struct ifreq *ifr);
 
+static void pico_call_event_cb(struct pico_bsd_endpoint *ep);
+
 /** Global Sockets descriptors array **/
 static struct pico_bsd_endpoint **PicoSockets       = NULL;
 static int                        PicoSocket_max    = 0;
@@ -208,8 +210,11 @@ static int                        PicoSocket_max    = 0;
 void pico_bsd_set_posix_fd(int sd, int posix_fd)
 {
   struct pico_bsd_endpoint *ep = get_endpoint(sd, 0);
-  if (ep)
+  if (ep) {
     ep->posix_fd = posix_fd;
+    if (pico_event_cb != NULL)
+      pico_call_event_cb(ep);
+  }
 }
 
 
@@ -435,7 +440,7 @@ int pico_connect(int sd, const struct sockaddr *_saddr, socklen_t socklen)
         return 0;
 
     if (ep->nonblocking) {
-        pico_err = PICO_ERR_EAGAIN;
+        pico_err = PICO_ERR_EINPROGRESS;
         ep->error = pico_err;
     } else {
         /* wait for event */
@@ -1094,7 +1099,7 @@ static struct pico_bsd_endpoint *get_endpoint(int sd, int set_err)
 /* wait for one of the selected events, return any of those that occurred */
 uint16_t pico_bsd_select(struct pico_bsd_endpoint *ep)
 {
-    uint16_t events = ep->events & ep->revents; /* maybe an event we are waiting for, was already queued ? */
+    uint16_t events = ep->revents & ep->events; /* maybe an event we are waiting for, was already queued ? */
     /* wait for one of the selected events... */
     while (!events)
     {
@@ -1134,14 +1139,24 @@ static uint16_t pico_bsd_wait(struct pico_bsd_endpoint * ep, int read, int write
 
 static void pico_call_event_cb(struct pico_bsd_endpoint *ep) {
   uint16_t revents = ep->revents;
+  if (ep->proto != PICO_PROTO_TCP) revents |= PICO_SOCK_EV_WR; /* only TCP manages EV_WR */
+  //printf("REVENTS %x %d\n", revents, pico_err);
   if (revents != ep->revents_cb) {
     int pollrevents = 0;
+    /* EV_CONN is set on only in case of success */
+    if ((revents & PICO_SOCK_EV_CONN) &&
+        ! (ep->revents_cb & PICO_SOCK_EV_CONN))
+      pico_err = 0;
     ep->revents_cb = revents;
     if (revents & (PICO_SOCK_EV_FIN | PICO_SOCK_EV_ERR))
       pollrevents |= POLLERR | POLLHUP;
     if (revents & PICO_SOCK_EV_CLOSE)
       pollrevents |= (POLLIN | POLLRDHUP);
-    if (revents & (PICO_SOCK_EV_RD | PICO_SOCK_EV_CONN)) {
+    if (revents & (PICO_SOCK_EV_RD)) {
+      pollrevents |= POLLIN;
+      pollrevents |= POLLRDNORM;
+    }
+    if (ep->state == SOCK_LISTEN && (revents & PICO_SOCK_EV_CONN)) {
       pollrevents |= POLLIN;
       pollrevents |= POLLRDNORM;
     }
@@ -1149,6 +1164,10 @@ static void pico_call_event_cb(struct pico_bsd_endpoint *ep) {
       pollrevents |= POLLOUT;
       pollrevents |= POLLWRNORM;
     }
+    if (ep->error == PICO_ERR_EINPROGRESS) {
+      ep->error = pico_err;
+    }
+
     pico_event_cb(pollrevents, ep->posix_fd, pico_event_cb_arg);
   }
 }

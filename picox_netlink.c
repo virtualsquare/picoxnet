@@ -53,8 +53,10 @@ struct picoxnl *picoxnl_socket(struct pico_stack *stack, int domain, int type, i
 }
 
 void picoxnl_vpollfd(struct picoxnl *picoxnl, int vpollfd) {
-	if (picoxnl)
+	if (picoxnl) {
 		picoxnl->vpollfd = vpollfd;
+		vpoll_ctl(vpollfd, VPOLL_CTL_ADDEVENTS, EPOLLOUT);
+	}
 }
 
 int picoxnl_close(struct picoxnl *picoxnl) {

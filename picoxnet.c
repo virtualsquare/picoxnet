@@ -152,7 +152,7 @@ static int picox_newsocket(struct pico_stack *stack, int picofd, struct picoxnl 
 	struct fd_data *fdd;
 	int *fdp;
 	/* TODO handle flags like SOCK_CLOEXEC */
-	fd = vpoll_create(EPOLLOUT, 0); /* The socket is ready for packet sending */
+	fd = vpoll_create(0, 0);
 	if (fd < 0)
 		goto vpoll_create_err;
 	fdd = fduserdata_new(fd2picofd, fd, struct fd_data);
