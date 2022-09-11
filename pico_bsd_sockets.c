@@ -196,7 +196,7 @@ static void free_up_ep(struct pico_bsd_endpoint *ep);
 static struct pico_bsd_endpoint *get_endpoint(int sd, int set_err);
 static int bsd_to_pico_addr(struct pico_bsd_endpoint *ep, union pico_address *addr, const struct sockaddr *_saddr, socklen_t socklen);
 static uint16_t bsd_to_pico_port(struct pico_bsd_endpoint *ep, const struct sockaddr *_saddr, socklen_t socklen);
-static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pico_address *addr, uint16_t net);
+static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t *socklen, union pico_address *addr, uint16_t net);
 static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t port);
 static struct pico_device *ifreq_to_pico_dev(struct pico_stack *stack, struct ifreq *ifr);
 
@@ -342,7 +342,7 @@ int pico_getsockname(int sd, struct sockaddr * local_addr, socklen_t *socklen)
     else
         *socklen = SOCKSIZE;
 
-    if (pico_addr_to_bsd(local_addr, *socklen, &addr, proto) < 0) {
+    if (pico_addr_to_bsd(local_addr, socklen, &addr, proto) < 0) {
         ep->error = pico_err;
         errno = pico_err;
         pico_mutex_unlock(picoLock);
@@ -375,7 +375,7 @@ int pico_getpeername(int sd, struct sockaddr * remote_addr, socklen_t *socklen)
     else
         *socklen = SOCKSIZE;
 
-    if (pico_addr_to_bsd(remote_addr, *socklen, &addr, proto) < 0) {
+    if (pico_addr_to_bsd(remote_addr, socklen, &addr, proto) < 0) {
         pico_mutex_unlock(picoLock);
         return -1;
     }
@@ -546,7 +546,7 @@ int pico_accept(int sd, struct sockaddr *_orig, socklen_t *socklen)
                 *socklen = SOCKSIZE;
             else
                 *socklen = SOCKSIZE6;
-            if (pico_addr_to_bsd(_orig, *socklen, &picoaddr, client_ep->s->net->proto_number) < 0) {
+            if (pico_addr_to_bsd(_orig, socklen, &picoaddr, client_ep->s->net->proto_number) < 0) {
                 client_ep->in_use = 0;
                 pico_mutex_unlock(picoLock);
                 return -1;
@@ -770,7 +770,7 @@ int pico_recvfrom(int sd, void * _buf, int len, int flags, struct sockaddr *_add
             if (ep->proto != PICO_PROTO_TCP) {
                 if (_addr && (socklen))
                 {
-                    if (pico_addr_to_bsd(_addr, *socklen, &picoaddr, ep->s->net->proto_number) < 0) {
+                    if (pico_addr_to_bsd(_addr, socklen, &picoaddr, ep->s->net->proto_number) < 0) {
                         pico_err = PICO_ERR_EINVAL;
                         errno = pico_err;
                         ep->error = pico_err;
@@ -987,13 +987,11 @@ static int pico_port_to_bsd(struct sockaddr *_saddr, socklen_t socklen, uint16_t
     return -1;
 }
 
-static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pico_address *addr, uint16_t net)
+static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t *socklen, union pico_address *addr, uint16_t net)
 {
-    if (socklen < SOCKSIZE) {
-        pico_err = PICO_ERR_EINVAL;
-        return -1;
-    }
-    if ((socklen >= SOCKSIZE_LL) && (net == PICO_AF_PACKET)) {
+  switch (net) {
+    case PICO_AF_PACKET:
+      if (*socklen >= SOCKSIZE_LL) {
         struct sockaddr_ll *saddr = (struct sockaddr_ll *)_saddr;
         memset(saddr, 0, sizeof(struct sockaddr_ll));
         memcpy(saddr->sll_addr, addr->ll.hwaddr.addr, 6);
@@ -1003,18 +1001,39 @@ static int pico_addr_to_bsd(struct sockaddr *_saddr, socklen_t socklen, union pi
         saddr->sll_halen = addr->ll.proto;
         saddr->sll_ifindex = addr->ll.dev->hash;
         saddr->sll_family = AF_PACKET;
-    }
-    if ((socklen >= SOCKSIZE6) && (net == PICO_PROTO_IPV6)) {
+        *socklen = SOCKSIZE_LL;
+        return 0;
+      } else {
+        pico_err = PICO_ERR_EINVAL;
+        return -1;
+      }
+    case PICO_PROTO_IPV6:
+      if (*socklen >= SOCKSIZE6) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)_saddr;
         memcpy(&saddr->sin6_addr.s6_addr, &addr->ip6.addr, 16);
         saddr->sin6_family = AF_INET6;
-    }
-    if ((net == PICO_PROTO_IPV4)) {
-        struct sockaddr_in *saddr = (struct sockaddr_in *)_saddr;
-        saddr->sin_addr.s_addr = addr->ip4.addr;
-        saddr->sin_family = AF_INET;
-    }
-    return 0;
+        *socklen = SOCKSIZE6;
+        return 0;
+      } else {
+        pico_err = PICO_ERR_EINVAL;
+        return -1;
+      }
+    case PICO_PROTO_IPV4:
+      if (net == PICO_PROTO_IPV4) {
+        if (*socklen >= SOCKSIZE) {
+          struct sockaddr_in *saddr = (struct sockaddr_in *)_saddr;
+          saddr->sin_addr.s_addr = addr->ip4.addr;
+          saddr->sin_family = AF_INET;
+          *socklen = SOCKSIZE;
+          return 0;
+        } else {
+          pico_err = PICO_ERR_EINVAL;
+          return -1;
+        }
+      }
+  }
+  pico_err = PICO_ERR_EPROTONOSUPPORT;
+  return -1;
 }
 
 static void free_up_ep(struct pico_bsd_endpoint *ep)
