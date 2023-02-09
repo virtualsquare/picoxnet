@@ -33,7 +33,6 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
-#include <vumodule.h>
 #include <errno.h>
 #include <pthread.h>
 
