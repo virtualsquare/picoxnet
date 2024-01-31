@@ -244,7 +244,7 @@ static int nl_linkcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 	}
 	/* backwards compat: old deprecated override usage of IFLA_INFO_SLAVE_DATA:
 	 * IFLA_INFO_DATA is the stadard way to send iface conf data */
-	if (ifla_info[IFLA_INFO_SLAVE_KIND] != NULL)
+	if (*vdeurl == 0 && ifla_info[IFLA_INFO_SLAVE_KIND] != NULL)
 		vdeurl = (char *) (ifla_info[IFLA_INFO_SLAVE_KIND] + 1);
 	if (attr[IFLA_IFNAME] != NULL) {
 		char *name = (char *) (attr[IFLA_IFNAME]+1);
