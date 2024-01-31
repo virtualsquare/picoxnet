@@ -1,6 +1,7 @@
 /*********************************************************************
  * Pico-X BSD
- * Copyright (C) 2020  Renzo Davoli <renzo@cs.unibo.it>, Daniele Lacamera <root@danielinux.net>
+ * Copyright (C) 2020-2024
+ * Renzo Davoli <renzo@cs.unibo.it>, Daniele Lacamera <root@danielinux.net>
  * VirtualSquare team.
  *
  * SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only
@@ -211,6 +212,9 @@ static void *nl_search_link(struct nlmsghdr *msg, struct nlattr **attr, void *ar
 		return dev_get_byindex(stack, ifi->ifi_index);
 }
 
+#define IFLA_VDE_VNL 1
+#define __IFLA_VDE_MAX 2
+
 static int nl_linkcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argenv) {
 	struct pico_stack *stack = argenv;
 	struct nlattr *ifla_info[__IFLA_INFO_MAX];
@@ -232,12 +236,16 @@ static int nl_linkcreate(struct nlmsghdr *msg, struct nlattr **attr, void *argen
 		return -EINVAL;
 	if (strcmp((char*)(ifla_info[IFLA_INFO_KIND]+1), "vde") != 0)
 		return -EINVAL;
+	if (ifla_info[IFLA_INFO_DATA] != NULL) {
+		struct nlattr *ifla_vde[__IFLA_VDE_MAX];
+		nlq_parsexattr(ifla_info[IFLA_INFO_DATA], ifla_vde, __IFLA_VDE_MAX);
+		if (ifla_vde[IFLA_VDE_VNL] != NULL)
+			vdeurl = (char *) (ifla_vde[IFLA_VDE_VNL] + 1);
+	}
+	/* backwards compat: old deprecated override usage of IFLA_INFO_SLAVE_DATA:
+	 * IFLA_INFO_DATA is the stadard way to send iface conf data */
 	if (ifla_info[IFLA_INFO_SLAVE_KIND] != NULL)
 		vdeurl = (char *) (ifla_info[IFLA_INFO_SLAVE_KIND] + 1);
-	/* backwards compat: old deprecated override usage of IFLA_INFO_DATA:
-	 * (IFLA_INFO_DATA needs suboptions, not a string) */
-	if (ifla_info[IFLA_INFO_DATA] != NULL)
-		vdeurl = (char *) (ifla_info[IFLA_INFO_DATA] + 1);
 	if (attr[IFLA_IFNAME] != NULL) {
 		char *name = (char *) (attr[IFLA_IFNAME]+1);
 		dev = pico_vde_create(stack, vdeurl, name, macaddr);
